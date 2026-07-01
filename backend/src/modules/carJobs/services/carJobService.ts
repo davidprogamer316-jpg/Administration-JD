@@ -63,6 +63,7 @@ export async function create(data: {
   vin: string;
   description: string;
   payment: number;
+  paperTypes?: string[];
 }) {
   const jobDate = new Date(data.date);
 
@@ -80,6 +81,7 @@ export async function create(data: {
     vin: data.vin,
     description: data.description,
     payment: data.payment,
+    paperTypes: data.paperTypes || [],
   });
 
   await recalculateById(period._id.toString());
@@ -89,7 +91,7 @@ export async function create(data: {
 
 export async function update(
   id: string,
-  data: { date?: string; vin?: string; description?: string; payment?: number }
+  data: { date?: string; vin?: string; description?: string; payment?: number; paperTypes?: string[] }
 ) {
   const job = await CarJob.findById(id);
   if (!job) {
@@ -110,6 +112,7 @@ export async function update(
   if (data.vin !== undefined) job.vin = data.vin;
   if (data.description !== undefined) job.description = data.description;
   if (data.payment !== undefined) job.payment = data.payment;
+  if (data.paperTypes !== undefined) job.paperTypes = data.paperTypes;
 
   await job.save();
 

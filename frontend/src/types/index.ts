@@ -41,6 +41,7 @@ export interface CarJob {
   description: string;
   payment: number;
   closed: boolean;
+  paperTypes: string[];
 }
 
 export interface AdminUser {
@@ -61,6 +62,7 @@ export interface InvoiceItem {
   description: string;
   amount: number;
   carJobId?: string;
+  paperTypes?: string[];
 }
 
 export interface Invoice {

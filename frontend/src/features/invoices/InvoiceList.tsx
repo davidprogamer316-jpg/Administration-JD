@@ -85,6 +85,7 @@ export default function InvoiceList() {
         description: j.description,
         amount: j.payment,
         carJobId: j._id,
+        paperTypes: j.paperTypes || [],
       }));
 
     try {
@@ -199,6 +200,18 @@ export default function InvoiceList() {
                           <p className="text-text-muted text-xs">
                             {formatDate(job.date)} — {formatMoney(job.payment)}
                           </p>
+                          {job.paperTypes && job.paperTypes.length > 0 && (
+                            <p className="text-text-muted text-xs mt-0.5">
+                              {job.paperTypes.map((pt) => {
+                                const labels: Record<string, string> = {
+                                  premium: 'Premium',
+                                  ceramic: 'Ceramic',
+                                  ultra_ceramic: 'Ultra Cerámico',
+                                };
+                                return labels[pt] || pt;
+                              }).join(', ')}
+                            </p>
+                          )}
                         </div>
                         <span className="text-text-body font-medium whitespace-nowrap">
                           {formatMoney(job.payment)}

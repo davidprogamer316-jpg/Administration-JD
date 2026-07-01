@@ -20,6 +20,12 @@ function formatMoney(n: number) {
   return `$${n.toLocaleString('es-CO', { minimumFractionDigits: 2 })}`;
 }
 
+const PAPER_OPTIONS = [
+  { value: 'premium', label: 'Papel Premium' },
+  { value: 'ceramic', label: 'Papel Ceramic' },
+  { value: 'ultra_ceramic', label: 'Papel Ultra Cerámico' },
+];
+
 export default function CarJobList() {
   const [jobs, setJobs] = useState<CarJob[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +44,13 @@ export default function CarJobList() {
   const [formVin, setFormVin] = useState('');
   const [formDesc, setFormDesc] = useState('');
   const [formPayment, setFormPayment] = useState('');
+  const [formPaperTypes, setFormPaperTypes] = useState<string[]>([]);
+
+  function togglePaper(val: string) {
+    setFormPaperTypes((prev) =>
+      prev.includes(val) ? prev.filter((x) => x !== val) : [...prev, val]
+    );
+  }
 
   async function load() {
     try {
@@ -69,6 +82,7 @@ export default function CarJobList() {
     setFormVin('');
     setFormDesc('');
     setFormPayment('');
+    setFormPaperTypes([]);
     setEditing(null);
     setShowForm(false);
     setError('');
@@ -80,6 +94,7 @@ export default function CarJobList() {
     setFormVin(job.vin);
     setFormDesc(job.description);
     setFormPayment(job.payment.toString());
+    setFormPaperTypes(job.paperTypes || []);
     setShowForm(true);
   }
 
@@ -93,6 +108,7 @@ export default function CarJobList() {
         vin: formVin,
         description: formDesc,
         payment: parseFloat(formPayment),
+        paperTypes: formPaperTypes,
       };
 
       if (editing) {
@@ -128,6 +144,7 @@ export default function CarJobList() {
             description: detailJob.description,
             amount: detailJob.payment,
             carJobId: detailJob._id,
+            paperTypes: detailJob.paperTypes || [],
           },
         ],
       });
@@ -279,6 +296,32 @@ export default function CarJobList() {
                 className="w-full rounded-lg border border-border bg-bg-page px-3.5 py-2.5 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-colors"
               />
             </div>
+            <div>
+              <label className="block text-text-muted text-sm mb-2">Papeles usados</label>
+              <div className="space-y-1.5">
+                {PAPER_OPTIONS.map((opt) => {
+                  const checked = formPaperTypes.includes(opt.value);
+                  return (
+                    <label
+                      key={opt.value}
+                      className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm cursor-pointer transition-colors ${
+                        checked
+                          ? 'bg-accent/10 ring-1 ring-accent/40'
+                          : 'hover:bg-bg-page'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => togglePaper(opt.value)}
+                        className="accent-accent"
+                      />
+                      <span className="text-text-body">{opt.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           <div className="flex gap-2 mt-4">
@@ -426,6 +469,26 @@ export default function CarJobList() {
                 {formatMoney(detailJob.payment)}
               </p>
             </div>
+            {(detailJob.paperTypes?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-text-muted text-xs uppercase tracking-wider mb-0.5">
+                  Papeles usados
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {detailJob.paperTypes.map((pt) => {
+                    const opt = PAPER_OPTIONS.find((o) => o.value === pt);
+                    return (
+                      <span
+                        key={pt}
+                        className="inline-block rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent"
+                      >
+                        {opt?.label || pt}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <div>
               <p className="text-text-muted text-xs uppercase tracking-wider mb-0.5">
                 Estado

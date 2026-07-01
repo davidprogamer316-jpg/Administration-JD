@@ -6,6 +6,7 @@ export interface ICarJob extends Document {
   description: string;
   payment: number;
   closed: boolean;
+  paperTypes: string[];
 }
 
 const CarJobSchema = new Schema<ICarJob>(
@@ -15,6 +16,7 @@ const CarJobSchema = new Schema<ICarJob>(
     description: { type: String, required: true, trim: true },
     payment: { type: Number, required: true, min: 0 },
     closed: { type: Boolean, default: false },
+    paperTypes: { type: [String], enum: ['premium', 'ceramic', 'ultra_ceramic'], default: [] },
   },
   { timestamps: true }
 );

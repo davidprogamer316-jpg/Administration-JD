@@ -14,6 +14,21 @@ const COMPANY_ADDRESS = 'Cra 1 # 2-3, Ciudad';
 
 const LOGO_PATH = path.join(__dirname, '../../../../assets/logo.png');
 
+const PAPER_INFO: Record<string, { label: string; specs: string }> = {
+  premium: {
+    label: 'Papel Premium',
+    specs: 'Rechazo solar: 40%, Protección UV: 90%, Garantía: 6 meses',
+  },
+  ceramic: {
+    label: 'Papel Ceramic',
+    specs: 'Rechazo solar: 70%, Protección UV: 100%, Garantía: 5 años',
+  },
+  ultra_ceramic: {
+    label: 'Papel Ultra Cerámico',
+    specs: 'Rechazo solar: 99%, Protección UV: 100%, Garantía: 10 años',
+  },
+};
+
 function formatMoney(n: number): string {
   return `$${n.toLocaleString('es-CO', { minimumFractionDigits: 2 })}`;
 }
@@ -40,7 +55,7 @@ export async function getById(id: string) {
 
 export async function create(data: {
   clientName: string;
-  items: Array<{ description: string; amount: number; carJobId?: string }>;
+  items: Array<{ description: string; amount: number; carJobId?: string; paperTypes?: string[] }>;
   notes?: string;
 }) {
   const count = await Invoice.countDocuments();
@@ -114,7 +129,16 @@ export async function generatePdf(id: string): Promise<Buffer> {
   pageH += 18;
   // Items
   for (const item of invoice.items) {
-    pageH += Math.max(18, textH(item.description, DESC_W, 10) + 4);
+    const itemH = Math.max(18, textH(item.description, DESC_W, 10) + 4);
+    let paperH = 0;
+    if (item.paperTypes && item.paperTypes.length > 0) {
+      for (const pt of item.paperTypes) {
+        if (PAPER_INFO[pt]) {
+          paperH += textH(PAPER_INFO[pt].specs, CONTENT_W, 7) + 1;
+        }
+      }
+    }
+    pageH += itemH + paperH;
   }
   // Total
   pageH += 4 + 28;
@@ -122,9 +146,9 @@ export async function generatePdf(id: string): Promise<Buffer> {
   pageH += 14;
   // Warranty
   pageH += textH(
-    'This document certifies the completion of the safety film ' +
-    'installation (polarized/tinting) service for the described vehicle. ' +
-    'Warranty applies to materials and workmanship per agreed terms.',
+    'Warranty applies per the specifications listed above for each ' +
+    'installed film type. This document certifies the completion of the ' +
+    'safety film installation service.',
     CONTENT_W, 8
   ) + 4;
   // Footer
@@ -216,6 +240,17 @@ export async function generatePdf(id: string): Promise<Buffer> {
       doc.text(formatMoney(item.amount), PRICE_X, y + 2, { width: PRICE_W, align: 'right' });
 
       y += rowH;
+
+      if (item.paperTypes && item.paperTypes.length > 0) {
+        doc.fontSize(7).font('Helvetica-Oblique').fillColor('#666');
+        for (const pt of item.paperTypes) {
+          const info = PAPER_INFO[pt];
+          if (!info) continue;
+          const h = doc.heightOfString(info.specs, { width: CONTENT_W });
+          doc.text(info.specs, LEFT, y, { width: CONTENT_W });
+          y += h + 1;
+        }
+      }
     }
 
     // ── Total ──
@@ -235,9 +270,9 @@ export async function generatePdf(id: string): Promise<Buffer> {
     // ── Warranty text (centred) ──
     doc.fontSize(8).font('Helvetica-Oblique').fillColor('#666');
     const warrantyText =
-      'This document certifies the completion of the safety film ' +
-      'installation (polarized/tinting) service for the described vehicle. ' +
-      'Warranty applies to materials and workmanship per agreed terms.';
+      'Warranty applies per the specifications listed above for each ' +
+      'installed film type. This document certifies the completion of the ' +
+      'safety film installation service.';
     doc.text(warrantyText, LEFT, y, { width: CONTENT_W, align: 'center' });
     y += doc.heightOfString(warrantyText, { width: CONTENT_W }) + 4;
 
