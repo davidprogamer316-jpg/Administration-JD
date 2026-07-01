@@ -9,6 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const COMPANY_NAME = 'Windows Tinting JD';
+const COMPANY_TAGLINE = 'Mobile tinting service — we come to you';
 const COMPANY_PHONE = '786 793 4440';
 const COMPANY_URL = 'https://tinting-film.com';
 
@@ -113,8 +114,8 @@ export async function generatePdf(id: string): Promise<Buffer> {
   let pageH = MARGIN;
   // Logo area
   pageH += 56;
-  // Company header (name + phone only)
-  pageH += 18 + 4 + textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 9);
+  // Company header (name + tagline + phone)
+  pageH += 18 + 2 + textH(COMPANY_TAGLINE, CONTENT_W, 8) + 4 + textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 9);
   // Separator
   pageH += 14;
   // Invoice title + number + date
@@ -181,6 +182,10 @@ export async function generatePdf(id: string): Promise<Buffer> {
     doc.fontSize(13).font('Helvetica-Bold').fillColor('#000');
     doc.text(COMPANY_NAME, LEFT, y, { align: 'center', width: CONTENT_W });
     y += 18;
+
+    doc.fontSize(8).font('Helvetica-Oblique').fillColor('#666');
+    doc.text(COMPANY_TAGLINE, LEFT, y, { align: 'center', width: CONTENT_W });
+    y += textH(COMPANY_TAGLINE, CONTENT_W, 8) + 4;
 
     doc.fontSize(9).font('Helvetica').fillColor('#444');
     doc.text(`Tel: ${COMPANY_PHONE}`, LEFT, y, { align: 'center', width: CONTENT_W });
