@@ -235,15 +235,12 @@ export default function CarJobList() {
         </div>
       )}
 
-      {showForm && (
-        <form
-          onSubmit={handleSubmit}
-          className="rounded-xl border border-border p-6 shadow-sm bg-surface mb-6 max-w-lg"
-        >
-          <h3 className="text-base font-heading font-semibold text-text-body mb-4">
-            {editing ? 'Editar trabajo' : 'Nuevo trabajo'}
-          </h3>
-
+      <Modal
+        open={showForm}
+        onClose={resetForm}
+        title={editing ? 'Editar trabajo' : 'Nuevo trabajo'}
+      >
+        <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
               <label className="block text-text-muted text-sm mb-1">Fecha</label>
@@ -340,7 +337,7 @@ export default function CarJobList() {
             </button>
           </div>
         </form>
-      )}
+      </Modal>
 
       {jobs.length === 0 ? (
         <div className="rounded-xl border border-border p-12 shadow-sm bg-surface text-center">
