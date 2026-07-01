@@ -10,5 +10,8 @@ export const env = {
   loginMaxAttempts: parseInt(process.env.LOGIN_MAX_ATTEMPTS || '5', 10),
   loginLockDurationMinutes: parseInt(process.env.LOGIN_LOCK_DURATION_MINUTES || '30', 10),
   companyProfitRate: parseFloat(process.env.COMPANY_PROFIT_RATE || '0.20'),
-  corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  corsOrigin: (() => {
+    const raw = process.env.CORS_ORIGIN || process.env.CORS_ORIGINS || 'http://localhost:3000';
+    try { return new URL(raw).origin; } catch { return raw; }
+  })(),
 };
