@@ -77,12 +77,12 @@ export default function VinScanner({ onScan }: VinScannerProps) {
           Escanear VIN
         </button>
       ) : (
-        <div className="space-y-2" ref={containerRef}>
-          <div className="relative">
+        <div className="space-y-2 w-full" ref={containerRef}>
+          <div className="relative w-full">
             <div
               id="vin-reader"
-              className="rounded-lg overflow-hidden"
-              style={{ minHeight: 200 }}
+              className="rounded-lg overflow-hidden w-full"
+              style={{ minHeight: 320 }}
             />
             <button
               type="button"
@@ -92,9 +92,9 @@ export default function VinScanner({ onScan }: VinScannerProps) {
               <CameraOff size={16} />
             </button>
           </div>
-          <div className="flex items-center gap-2 text-accent text-xs">
-            <Scan size={14} />
-            Apunta la cámara al código de barras del VIN
+          <div className="flex items-center justify-center gap-2 text-accent text-sm">
+            <Scan size={16} />
+            Apunta al código de barras del VIN
           </div>
           {error && (
             <p className="text-danger text-xs">{error}</p>
