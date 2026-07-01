@@ -8,16 +8,24 @@ interface VinScannerProps {
   onScan: (vin: string) => void;
 }
 
+const BARCODE_FORMATS = [
+  'code_128', 'code_39', 'code_93', 'codabar',
+  'data_matrix', 'pdf417', 'qr_code', 'itf', 'aztec',
+] as const;
+
 export default function VinScanner({ onScan }: VinScannerProps) {
-  const scannerRef = useRef<any>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const rafRef = useRef<number>(0);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     return () => {
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {});
-        scannerRef.current = null;
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
       }
     };
   }, []);
@@ -27,52 +35,67 @@ export default function VinScanner({ onScan }: VinScannerProps) {
     return () => { document.body.style.overflow = ''; };
   }, [scanning]);
 
-  const startScanning = useCallback(async () => {
-    setError('');
-    setScanning(true);
+  // Attach stream to video & start BarcodeDetector once DOM is ready
+  useEffect(() => {
+    if (!scanning || !streamRef.current) return;
+    const stream = streamRef.current;
+    const video = videoRef.current;
+    if (!video) return;
 
-    try {
-      const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import('html5-qrcode');
-
-      const scanner = new Html5Qrcode('vin-reader', {
-        verbose: false,
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.CODE_39,
-          Html5QrcodeSupportedFormats.CODE_93,
-          Html5QrcodeSupportedFormats.ITF,
-          Html5QrcodeSupportedFormats.PDF_417,
-          Html5QrcodeSupportedFormats.DATA_MATRIX,
-          Html5QrcodeSupportedFormats.QR_CODE,
-        ],
+    video.srcObject = stream;
+    video.play().then(() => {
+      if (!('BarcodeDetector' in window)) return;
+      const detector = new (window as any).BarcodeDetector({
+        formats: BARCODE_FORMATS as any,
       });
-      scannerRef.current = scanner;
-
-      await scanner.start(
-        { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 300, height: 80 } },
-        (decodedText: string) => {
-          const cleaned = decodedText.replace(/\*/g, '').trim();
-          if (cleaned) {
-            onScan(cleaned);
-            stopScanning();
+      let running = true;
+      const detect = async () => {
+        if (!running || !video) return;
+        try {
+          const codes = await detector.detect(video);
+          if (codes.length > 0) {
+            const text = codes[0].rawValue.replace(/\*/g, '').trim();
+            if (text) {
+              running = false;
+              onScan(text);
+              stopScanning();
+              return;
+            }
           }
-        },
-        () => {}
-      );
-    } catch (err: any) {
-      setError(err?.message || 'No se pudo acceder a la cámara');
-      setScanning(false);
-    }
-  }, [onScan]);
+        } catch {}
+        rafRef.current = requestAnimationFrame(detect);
+      };
+      detect();
+      return () => { running = false; };
+    }).catch(() => {
+      setError('Error al reproducir video');
+    });
+  }, [scanning, onScan]);
 
-  function stopScanning() {
-    if (scannerRef.current) {
-      scannerRef.current.stop().catch(() => {});
-      scannerRef.current = null;
+  const stopScanning = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
     }
     setScanning(false);
-  }
+  }, []);
+
+  const startScanning = useCallback(() => {
+    setError('');
+
+    // getUserMedia called SYNCHRONOUSLY during user gesture (required by iOS)
+    const promise = navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+    });
+
+    promise.then((stream) => {
+      streamRef.current = stream;
+      setScanning(true);
+    }).catch((err) => {
+      setError(err?.message || 'No se pudo acceder a la cámara');
+    });
+  }, []);
 
   return (
     <>
@@ -99,9 +122,12 @@ export default function VinScanner({ onScan }: VinScannerProps) {
               </button>
             </div>
             <div className="flex-1 relative min-h-0 h-full">
-              <div
-                id="vin-reader"
-                className="absolute inset-0 w-full h-full"
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="absolute inset-0 w-full h-full object-cover"
               />
             </div>
             <div className="flex items-center justify-center gap-2 px-4 py-4 text-white/80 text-sm shrink-0">
