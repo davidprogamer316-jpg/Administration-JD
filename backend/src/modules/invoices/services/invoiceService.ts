@@ -13,7 +13,7 @@ const COMPANY_TAGLINE = 'Mobile tinting service — we come to you';
 const COMPANY_PHONE = '786 793 4440';
 const COMPANY_URL = 'https://tinting-film.com';
 
-const LOGO_PATH = path.join(__dirname, '../../../../assets/logo.png');
+const LOGO_PATH = path.join(__dirname, '../../../../assets/logo.PNG');
 const QR_SIZE = 72;
 
 const PAPER_INFO: Record<string, { label: string; specs: string }> = {
