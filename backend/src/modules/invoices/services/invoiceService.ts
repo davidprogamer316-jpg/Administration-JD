@@ -2,17 +2,18 @@ import PDFDocument from 'pdfkit';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import QRCode from 'qrcode';
 import { Invoice } from '../models/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const COMPANY_NAME = 'Windows Tinting JD';
-const COMPANY_NIT = 'NIT 123.456.789-0';
-const COMPANY_PHONE = '300 123 4567';
-const COMPANY_ADDRESS = 'Cra 1 # 2-3, Ciudad';
+const COMPANY_PHONE = '786 793 4440';
+const COMPANY_URL = 'https://tinting-film.com';
 
 const LOGO_PATH = path.join(__dirname, '../../../../assets/logo.png');
+const QR_SIZE = 72;
 
 const PAPER_INFO: Record<string, { label: string; specs: string }> = {
   premium: {
@@ -112,9 +113,8 @@ export async function generatePdf(id: string): Promise<Buffer> {
   let pageH = MARGIN;
   // Logo area
   pageH += 56;
-  // Company header   (13 + 3 gaps + 9×3 + 3 gaps)
-  pageH += 18 + 2 + textH(COMPANY_NIT, CONTENT_W, 9) + 2 +
-    textH(COMPANY_ADDRESS, CONTENT_W, 9) + 2 + textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 9);
+  // Company header (name + phone only)
+  pageH += 18 + 4 + textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 9);
   // Separator
   pageH += 14;
   // Invoice title + number + date
@@ -157,6 +157,8 @@ export async function generatePdf(id: string): Promise<Buffer> {
     `Generated on ${formatDate(new Date())} by ${COMPANY_NAME}.`,
     CONTENT_W, 8
   );
+  // QR code
+  pageH += 12 + QR_SIZE + 8;
   pageH = Math.ceil(pageH * 1.25) + MARGIN;
 
   const doc = new PDFDocument({ size: [PAGE_W, pageH], margin: MARGIN });
@@ -181,12 +183,6 @@ export async function generatePdf(id: string): Promise<Buffer> {
     y += 18;
 
     doc.fontSize(9).font('Helvetica').fillColor('#444');
-    doc.text(COMPANY_NIT, LEFT, y, { align: 'center', width: CONTENT_W });
-    y += textH(COMPANY_NIT, CONTENT_W, 9) + 2;
-
-    doc.text(COMPANY_ADDRESS, LEFT, y, { align: 'center', width: CONTENT_W });
-    y += textH(COMPANY_ADDRESS, CONTENT_W, 9) + 2;
-
     doc.text(`Tel: ${COMPANY_PHONE}`, LEFT, y, { align: 'center', width: CONTENT_W });
     y += textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 9) + 2;
 
@@ -282,7 +278,16 @@ export async function generatePdf(id: string): Promise<Buffer> {
     doc.fontSize(7).font('Helvetica').fillColor('#999');
     const footerText = `Generated on ${formatDate(new Date())} by ${COMPANY_NAME}.`;
     doc.text(footerText, LEFT, y, { align: 'center', width: CONTENT_W });
+    y += doc.heightOfString(footerText, { width: CONTENT_W }) + 8;
 
-    doc.end();
+    // ── QR code ──
+    QRCode.toBuffer(COMPANY_URL, {
+      type: 'png',
+      width: QR_SIZE * 4,
+      margin: 0,
+    }).then((qrBuf) => {
+      doc.image(qrBuf, (PAGE_W - QR_SIZE) / 2, y, { width: QR_SIZE });
+      doc.end();
+    }).catch(() => doc.end());
   });
 }
