@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Camera, X, Scan } from 'lucide-react';
 
 interface VinScannerProps {
@@ -94,36 +95,34 @@ export default function VinScanner({ onScan }: VinScannerProps) {
           Escanear VIN
         </button>
       ) : (
-        <div className="fixed inset-0 z-[60] bg-black flex flex-col">
-          {/* top bar */}
-          <div className="flex items-center justify-between px-4 py-3 text-white shrink-0">
-            <span className="text-sm font-medium">Escanear código</span>
-            <button
-              type="button"
-              onClick={stopScanning}
-              className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
-            >
-              <X size={20} />
-            </button>
-          </div>
-
-          {/* camera */}
-          <div className="flex-1 relative">
-            <div
-              id="vin-reader"
-              className="absolute inset-0"
-            />
-          </div>
-
-          {/* hint */}
-          <div className="flex items-center justify-center gap-2 px-4 py-4 text-white/80 text-sm shrink-0">
-            <Scan size={18} />
-            Apunta al código de barras del VIN
-          </div>
-          {error && (
-            <p className="text-danger text-xs text-center px-4 pb-4">{error}</p>
-          )}
-        </div>
+        createPortal(
+          <div className="fixed inset-0 z-[60] bg-black flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 text-white shrink-0">
+              <span className="text-sm font-medium">Escanear código</span>
+              <button
+                type="button"
+                onClick={stopScanning}
+                className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 relative">
+              <div
+                id="vin-reader"
+                className="absolute inset-0"
+              />
+            </div>
+            <div className="flex items-center justify-center gap-2 px-4 py-4 text-white/80 text-sm shrink-0">
+              <Scan size={18} />
+              Apunta al código de barras del VIN
+            </div>
+            {error && (
+              <p className="text-danger text-xs text-center px-4 pb-4">{error}</p>
+            )}
+          </div>,
+          document.body
+        )
       )}
     </>
   );
