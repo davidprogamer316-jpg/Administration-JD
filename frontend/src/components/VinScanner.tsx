@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, CameraOff, Scan } from 'lucide-react';
 
 interface VinScannerProps {
@@ -9,7 +8,7 @@ interface VinScannerProps {
 }
 
 export default function VinScanner({ onScan }: VinScannerProps) {
-  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const scannerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState('');
@@ -23,11 +22,13 @@ export default function VinScanner({ onScan }: VinScannerProps) {
     };
   }, []);
 
-  async function startScanning() {
+  const startScanning = useCallback(async () => {
     setError('');
     setScanning(true);
 
     try {
+      const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import('html5-qrcode');
+
       const scanner = new Html5Qrcode('vin-reader', {
         verbose: false,
         formatsToSupport: [
@@ -44,17 +45,17 @@ export default function VinScanner({ onScan }: VinScannerProps) {
           fps: 10,
           qrbox: { width: 280, height: 50 },
         },
-        (decodedText) => {
+        (decodedText: string) => {
           onScan(decodedText);
           stopScanning();
         },
         () => {}
       );
-    } catch (err) {
-      setError('No se pudo acceder a la cámara');
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo acceder a la cámara');
       setScanning(false);
     }
-  }
+  }, [onScan]);
 
   function stopScanning() {
     if (scannerRef.current) {
