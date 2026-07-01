@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { Camera, CameraOff, Scan } from 'lucide-react';
 
 interface VinScannerProps {
@@ -10,6 +10,7 @@ interface VinScannerProps {
 
 export default function VinScanner({ onScan }: VinScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState('');
 
@@ -17,6 +18,7 @@ export default function VinScanner({ onScan }: VinScannerProps) {
     return () => {
       if (scannerRef.current) {
         scannerRef.current.stop().catch(() => {});
+        scannerRef.current = null;
       }
     };
   }, []);
@@ -26,14 +28,21 @@ export default function VinScanner({ onScan }: VinScannerProps) {
     setScanning(true);
 
     try {
-      const scanner = new Html5Qrcode('vin-reader');
+      const scanner = new Html5Qrcode('vin-reader', {
+        verbose: false,
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.QR_CODE,
+        ],
+      });
       scannerRef.current = scanner;
 
       await scanner.start(
         { facingMode: 'environment' },
         {
           fps: 10,
-          qrbox: { width: 300, height: 100 },
+          qrbox: { width: 280, height: 50 },
         },
         (decodedText) => {
           onScan(decodedText);
@@ -67,13 +76,17 @@ export default function VinScanner({ onScan }: VinScannerProps) {
           Escanear VIN
         </button>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2" ref={containerRef}>
           <div className="relative">
-            <div id="vin-reader" className="rounded-lg overflow-hidden" />
+            <div
+              id="vin-reader"
+              className="rounded-lg overflow-hidden"
+              style={{ minHeight: 200 }}
+            />
             <button
               type="button"
               onClick={stopScanning}
-              className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-lg text-white hover:bg-black/70 transition-colors"
+              className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-lg text-white hover:bg-black/70 transition-colors z-10"
             >
               <CameraOff size={16} />
             </button>
