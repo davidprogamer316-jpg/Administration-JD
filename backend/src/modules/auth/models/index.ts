@@ -1,1 +1,1 @@
-export { AdminUser, IAdminUser } from './AdminUser';
+export { AdminUser, IAdminUser } from './AdminUser.js';

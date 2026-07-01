@@ -1,7 +1,11 @@
 import PDFDocument from 'pdfkit';
 import path from 'path';
 import fs from 'fs';
-import { Invoice } from '../models';
+import { fileURLToPath } from 'url';
+import { Invoice } from '../models/index.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const COMPANY_NAME = 'Windows Tinting JD';
 const COMPANY_NIT = 'NIT 123.456.789-0';

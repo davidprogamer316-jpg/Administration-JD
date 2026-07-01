@@ -1,7 +1,7 @@
 import PDFDocument from 'pdfkit';
-import { AccountingPeriod } from '../../accounting/models';
-import { CarJob, ICarJob } from '../../carJobs/models';
-import { Employee } from '../models';
+import { AccountingPeriod } from '../../accounting/models/index.js';
+import { CarJob, ICarJob } from '../../carJobs/models/index.js';
+import { Employee } from '../models/index.js';
 
 export async function generateEmployeePdf(
   employeeId: string,

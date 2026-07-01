@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { authenticateToken } from '../../../shared/middleware/authenticate';
-import * as carJobController from '../controllers/carJobController';
+import { authenticateToken } from '../../../shared/middleware/authenticate.js';
+import * as carJobController from '../controllers/carJobController.js';
 
 const router = Router();
 

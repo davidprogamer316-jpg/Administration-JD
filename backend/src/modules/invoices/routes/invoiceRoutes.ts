@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { authenticateToken } from '../../../shared/middleware/authenticate';
-import * as controller from '../controllers/invoiceController';
+import { authenticateToken } from '../../../shared/middleware/authenticate.js';
+import * as controller from '../controllers/invoiceController.js';
 
 const router = Router();
 router.use(authenticateToken);

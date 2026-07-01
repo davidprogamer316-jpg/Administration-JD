@@ -1,1 +1,1 @@
-export { Invoice, IInvoice, IInvoiceItem } from './Invoice';
+export { Invoice, IInvoice, IInvoiceItem } from './Invoice.js';

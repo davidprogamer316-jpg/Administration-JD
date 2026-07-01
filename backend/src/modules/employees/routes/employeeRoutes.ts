@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { authenticateToken } from '../../../shared/middleware/authenticate';
-import * as employeeController from '../controllers/employeeController';
-import * as pdfController from '../controllers/pdfController';
+import { authenticateToken } from '../../../shared/middleware/authenticate.js';
+import * as employeeController from '../controllers/employeeController.js';
+import * as pdfController from '../controllers/pdfController.js';
 
 const router = Router();
 

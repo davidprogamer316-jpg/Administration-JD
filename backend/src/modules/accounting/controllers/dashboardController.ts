@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import * as dashboardService from '../services/dashboardService';
+import * as dashboardService from '../services/dashboardService.js';
 
 export async function getDashboard(
   req: Request,

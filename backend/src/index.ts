@@ -1,13 +1,13 @@
 import express from 'express';
 import cors from 'cors';
-import { env } from './config/env';
-import { connectDatabase } from './config/database';
-import authRoutes from './modules/auth/routes/authRoutes';
-import employeeRoutes from './modules/employees/routes/employeeRoutes';
-import carJobRoutes from './modules/carJobs/routes/carJobRoutes';
-import accountingRoutes from './modules/accounting/routes/accountingRoutes';
-import invoiceRoutes from './modules/invoices/routes/invoiceRoutes';
-import { errorHandler } from './shared/middleware/errorHandler';
+import { env } from './config/env.js';
+import { connectDatabase } from './config/database.js';
+import authRoutes from './modules/auth/routes/authRoutes.js';
+import employeeRoutes from './modules/employees/routes/employeeRoutes.js';
+import carJobRoutes from './modules/carJobs/routes/carJobRoutes.js';
+import accountingRoutes from './modules/accounting/routes/accountingRoutes.js';
+import invoiceRoutes from './modules/invoices/routes/invoiceRoutes.js';
+import { errorHandler } from './shared/middleware/errorHandler.js';
 
 const app = express();
 

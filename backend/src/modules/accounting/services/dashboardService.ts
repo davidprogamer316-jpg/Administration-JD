@@ -1,6 +1,6 @@
-import { AccountingPeriod } from '../models';
-import { Employee } from '../../employees/models';
-import { CarJob } from '../../carJobs/models';
+import { AccountingPeriod } from '../models/index.js';
+import { Employee } from '../../employees/models/index.js';
+import { CarJob } from '../../carJobs/models/index.js';
 
 export async function getDashboard(filters?: {
   startDate?: string;

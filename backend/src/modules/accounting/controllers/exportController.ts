@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import * as exportService from '../services/exportService';
+import * as exportService from '../services/exportService.js';
 
 export async function exportAccounting(
   req: Request,

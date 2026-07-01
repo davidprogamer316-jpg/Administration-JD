@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { authenticateToken } from '../../../shared/middleware/authenticate';
-import * as accountingController from '../controllers/accountingController';
-import * as dashboardController from '../controllers/dashboardController';
-import * as exportController from '../controllers/exportController';
+import { authenticateToken } from '../../../shared/middleware/authenticate.js';
+import * as accountingController from '../controllers/accountingController.js';
+import * as dashboardController from '../controllers/dashboardController.js';
+import * as exportController from '../controllers/exportController.js';
 
 const router = Router();
 

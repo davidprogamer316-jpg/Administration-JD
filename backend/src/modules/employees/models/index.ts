@@ -1,1 +1,1 @@
-export { Employee, IEmployee } from './Employee';
+export { Employee, IEmployee } from './Employee.js';

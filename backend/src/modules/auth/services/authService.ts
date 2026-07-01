@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { AdminUser, IAdminUser } from '../models';
-import { env } from '../../../config/env';
+import { AdminUser, IAdminUser } from '../models/index.js';
+import { env } from '../../../config/env.js';
 
 function generateToken(user: IAdminUser): string {
   return jwt.sign({ id: user._id.toString() }, env.jwtSecret, {

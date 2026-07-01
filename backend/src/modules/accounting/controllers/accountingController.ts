@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import * as accountingService from '../services/accountingService';
+import * as accountingService from '../services/accountingService.js';
 
 export async function list(req: Request, res: Response, next: NextFunction) {
   try {

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import * as carJobService from '../services/carJobService';
+import * as carJobService from '../services/carJobService.js';
 
 export async function list(req: Request, res: Response, next: NextFunction) {
   try {

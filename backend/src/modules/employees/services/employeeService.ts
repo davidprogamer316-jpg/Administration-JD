@@ -1,6 +1,6 @@
-import { Employee, IEmployee } from '../models';
-import { AccountingPeriod } from '../../accounting/models';
-import { env } from '../../../config/env';
+import { Employee, IEmployee } from '../models/index.js';
+import { AccountingPeriod } from '../../accounting/models/index.js';
+import { env } from '../../../config/env.js';
 
 async function recalculateOpenPeriods() {
   const openPeriods = await AccountingPeriod.find({ closed: false });

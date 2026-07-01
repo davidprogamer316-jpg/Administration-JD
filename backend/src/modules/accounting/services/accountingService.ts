@@ -1,7 +1,7 @@
-import { AccountingPeriod, IAccountingPeriod } from '../models';
-import { CarJob } from '../../carJobs/models';
-import { Employee } from '../../employees/models';
-import { env } from '../../../config/env';
+import { AccountingPeriod, IAccountingPeriod } from '../models/index.js';
+import { CarJob } from '../../carJobs/models/index.js';
+import { Employee } from '../../employees/models/index.js';
+import { env } from '../../../config/env.js';
 
 async function recalculate(period: IAccountingPeriod) {
   const jobs = await CarJob.find({

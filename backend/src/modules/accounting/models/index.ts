@@ -3,4 +3,4 @@ export {
   IAccountingPeriod,
   IExpenseItem,
   IEmployeeShare,
-} from './AccountingPeriod';
+} from './AccountingPeriod.js';

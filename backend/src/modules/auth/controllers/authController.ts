@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express';
-import { AuthenticatedRequest } from '../../../shared/middleware/authenticate';
-import * as authService from '../services/authService';
+import { AuthenticatedRequest } from '../../../shared/middleware/authenticate.js';
+import * as authService from '../services/authService.js';
 
 export async function register(
   req: AuthenticatedRequest,

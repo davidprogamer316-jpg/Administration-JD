@@ -1,7 +1,7 @@
-import { CarJob } from '../models';
-import { AccountingPeriod } from '../../accounting/models';
-import { getQuincena } from '../../../shared/utils/quincena';
-import { recalculateById } from '../../accounting/services/accountingService';
+import { CarJob } from '../models/index.js';
+import { AccountingPeriod } from '../../accounting/models/index.js';
+import { getQuincena } from '../../../shared/utils/quincena.js';
+import { recalculateById } from '../../accounting/services/accountingService.js';
 
 async function ensureAccountingPeriod(date: Date) {
   const range = getQuincena(date);

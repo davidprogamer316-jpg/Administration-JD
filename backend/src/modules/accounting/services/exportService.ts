@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
-import { AccountingPeriod } from '../models';
-import { CarJob } from '../../carJobs/models';
+import { AccountingPeriod } from '../models/index.js';
+import { CarJob } from '../../carJobs/models/index.js';
 
 function formatMoney(n: number): string {
   return `$${n.toLocaleString('es-CO', { minimumFractionDigits: 2 })}`;

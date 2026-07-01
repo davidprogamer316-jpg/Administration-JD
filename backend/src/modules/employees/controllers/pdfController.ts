@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import * as pdfService from '../services/pdfService';
+import * as pdfService from '../services/pdfService.js';
 
 export async function downloadEmployeePdf(
   req: Request,
