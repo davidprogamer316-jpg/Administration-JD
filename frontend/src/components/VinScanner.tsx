@@ -37,15 +37,10 @@ export default function VinScanner({ onScan }: VinScannerProps) {
     setScanning(true);
 
     try {
-      const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import('html5-qrcode');
+      const { Html5Qrcode } = await import('html5-qrcode');
 
       const scanner = new Html5Qrcode('vin-reader', {
         verbose: false,
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.CODE_39,
-          Html5QrcodeSupportedFormats.QR_CODE,
-        ],
       });
       scannerRef.current = scanner;
 
@@ -56,7 +51,8 @@ export default function VinScanner({ onScan }: VinScannerProps) {
           qrbox: { width: 280, height: 60 },
         },
         (decodedText: string) => {
-          onScan(decodedText);
+          const cleaned = decodedText.replace(/\*/g, '').trim();
+          onScan(cleaned);
           stopScanning();
         },
         () => {}
