@@ -4,7 +4,7 @@ import { env } from '../../../config/env.js';
 
 async function recalculateOpenPeriods() {
   const openPeriods = await AccountingPeriod.find({ closed: false });
-  const CarJob = (await import('../../carJobs/models')).CarJob;
+  const { CarJob } = await import('../../carJobs/models/index.js');
   const EmployeeModel = Employee;
 
   for (const period of openPeriods) {

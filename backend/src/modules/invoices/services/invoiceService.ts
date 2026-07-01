@@ -133,8 +133,9 @@ export async function generatePdf(id: string): Promise<Buffer> {
     let paperH = 0;
     if (item.paperTypes && item.paperTypes.length > 0) {
       for (const pt of item.paperTypes) {
-        if (PAPER_INFO[pt]) {
-          paperH += textH(PAPER_INFO[pt].specs, CONTENT_W, 7) + 1;
+        const info = PAPER_INFO[pt];
+        if (info) {
+          paperH += textH(`${info.label} — ${info.specs}`, CONTENT_W, 7) + 1;
         }
       }
     }
@@ -246,8 +247,9 @@ export async function generatePdf(id: string): Promise<Buffer> {
         for (const pt of item.paperTypes) {
           const info = PAPER_INFO[pt];
           if (!info) continue;
-          const h = doc.heightOfString(info.specs, { width: CONTENT_W });
-          doc.text(info.specs, LEFT, y, { width: CONTENT_W });
+          const text = `${info.label} — ${info.specs}`;
+          const h = doc.heightOfString(text, { width: CONTENT_W });
+          doc.text(text, LEFT, y, { width: CONTENT_W });
           y += h + 1;
         }
       }
