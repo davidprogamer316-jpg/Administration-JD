@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Camera, CameraOff, Scan } from 'lucide-react';
+import { Camera, X, Scan } from 'lucide-react';
 
 interface VinScannerProps {
   onScan: (vin: string) => void;
@@ -9,7 +9,6 @@ interface VinScannerProps {
 
 export default function VinScanner({ onScan }: VinScannerProps) {
   const scannerRef = useRef<any>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState('');
 
@@ -21,6 +20,17 @@ export default function VinScanner({ onScan }: VinScannerProps) {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (scanning) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [scanning]);
 
   const startScanning = useCallback(async () => {
     setError('');
@@ -43,7 +53,7 @@ export default function VinScanner({ onScan }: VinScannerProps) {
         { facingMode: 'environment' },
         {
           fps: 10,
-          qrbox: { width: 280, height: 50 },
+          qrbox: { width: 280, height: 60 },
         },
         (decodedText: string) => {
           onScan(decodedText);
@@ -66,7 +76,7 @@ export default function VinScanner({ onScan }: VinScannerProps) {
   }
 
   return (
-    <div>
+    <>
       {!scanning ? (
         <button
           type="button"
@@ -77,30 +87,37 @@ export default function VinScanner({ onScan }: VinScannerProps) {
           Escanear VIN
         </button>
       ) : (
-        <div className="space-y-2 w-full" ref={containerRef}>
-          <div className="relative w-full">
-            <div
-              id="vin-reader"
-              className="rounded-lg overflow-hidden w-full"
-              style={{ minHeight: 320 }}
-            />
+        <div className="fixed inset-0 z-50 bg-black flex flex-col">
+          {/* top bar */}
+          <div className="flex items-center justify-between px-4 py-3 text-white shrink-0">
+            <span className="text-sm font-medium">Escanear código</span>
             <button
               type="button"
               onClick={stopScanning}
-              className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-lg text-white hover:bg-black/70 transition-colors z-10"
+              className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
             >
-              <CameraOff size={16} />
+              <X size={20} />
             </button>
           </div>
-          <div className="flex items-center justify-center gap-2 text-accent text-sm">
-            <Scan size={16} />
+
+          {/* camera */}
+          <div className="flex-1 relative">
+            <div
+              id="vin-reader"
+              className="absolute inset-0"
+            />
+          </div>
+
+          {/* hint */}
+          <div className="flex items-center justify-center gap-2 px-4 py-4 text-white/80 text-sm shrink-0">
+            <Scan size={18} />
             Apunta al código de barras del VIN
           </div>
           {error && (
-            <p className="text-danger text-xs">{error}</p>
+            <p className="text-danger text-xs text-center px-4 pb-4">{error}</p>
           )}
         </div>
       )}
-    </div>
+    </>
   );
 }
