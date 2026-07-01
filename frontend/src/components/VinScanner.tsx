@@ -37,10 +37,19 @@ export default function VinScanner({ onScan }: VinScannerProps) {
     setScanning(true);
 
     try {
-      const { Html5Qrcode } = await import('html5-qrcode');
+      const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import('html5-qrcode');
 
       const scanner = new Html5Qrcode('vin-reader', {
         verbose: false,
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.CODE_93,
+          Html5QrcodeSupportedFormats.ITF,
+          Html5QrcodeSupportedFormats.PDF_417,
+          Html5QrcodeSupportedFormats.DATA_MATRIX,
+          Html5QrcodeSupportedFormats.QR_CODE,
+        ],
       });
       scannerRef.current = scanner;
 
@@ -48,12 +57,14 @@ export default function VinScanner({ onScan }: VinScannerProps) {
         { facingMode: 'environment' },
         {
           fps: 10,
-          qrbox: { width: 280, height: 60 },
+          qrbox: { width: 300, height: 80 },
         },
         (decodedText: string) => {
           const cleaned = decodedText.replace(/\*/g, '').trim();
-          onScan(cleaned);
-          stopScanning();
+          if (cleaned) {
+            onScan(cleaned);
+            stopScanning();
+          }
         },
         () => {}
       );
@@ -83,7 +94,7 @@ export default function VinScanner({ onScan }: VinScannerProps) {
           Escanear VIN
         </button>
       ) : (
-        <div className="fixed inset-0 z-50 bg-black flex flex-col">
+        <div className="fixed inset-0 z-[60] bg-black flex flex-col">
           {/* top bar */}
           <div className="flex items-center justify-between px-4 py-3 text-white shrink-0">
             <span className="text-sm font-medium">Escanear código</span>
