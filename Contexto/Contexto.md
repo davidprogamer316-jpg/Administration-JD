@@ -1,6 +1,6 @@
 # Tinting-JD ERP
 
-**Versión:** 0.6.0 (MVP - Contabilidad quincenal + Trabajos + Facturación + Seguridad mejorada)
+**Versión:** 0.7.0 (MVP - Contabilidad quincenal + Trabajos + Facturación + Seguridad mejorada + iOS fixes)
 **Fecha:** Julio 2026
 **Tipo:** Aplicación Web (ERP modular)
 **Tecnología Backend:** Node.js / Express + TypeScript
@@ -368,7 +368,7 @@ Todos estos valores deben recalcularse automáticamente cada vez que se modifiqu
 - El registro de nuevas cuentas de administrador está restringido (no es un registro público abierto), dado que la aplicación estará en internet.
 - **Límite de intentos de login (fuerza bruta):** tras 5 intentos fallidos de login, la cuenta se bloquea por 30 minutos (configurable vía `login.max-attempts` y `login.lock-duration-minutes`). El endpoint devuelve HTTP 423 LOCKED con `locked: true`. Se puede desbloquear manualmente desde la página de configuración (`/settings`).
 - **Al cerrar un periodo contable**, todos los `CarJob` cuya fecha caiga dentro de ese rango se marcan automáticamente con `closed=true`. Una vez cerrado, no se pueden crear, editar ni eliminar trabajos en ese periodo.
-- **Escáner VIN:** durante la creación de un `CarJob`, se puede escanear el código de barras del VIN (Code 128/Code 39) usando la cámara trasera del dispositivo. El VIN escaneado se rellena automáticamente en el campo correspondiente.
+- **Escáner VIN:** durante la creación de un `CarJob`, se puede escanear el código de barras del VIN (Code 128/Code 39). Abre la cámara trasera, muestra el video en vivo, el usuario presiona "Tomar foto", captura un frame y lo decodifica con `@zxing/library`. El VIN escaneado se rellena automáticamente en el campo correspondiente.
 - **PDF de pagos por empleado:** desde la página de empleados se puede descargar un PDF con el historial de pagos de un empleado en un mes específico. Al hacer clic en el icono de PDF se abre un modal donde se selecciona mes y año antes de descargar. El PDF muestra los periodos quincenales, los trabajos del periodo y la ganancia proporcional del empleado por cada trabajo. La ganancia se calcula como `job.payment / totalIncome * employeeAmount`. No se muestra el precio del servicio (solo la ganancia del empleado).
 - **Generación de facturas desde trabajos:** al hacer clic en "Generar factura" en el modal de detalle de un trabajo (`CarJob`), se abre un modal para ingresar el nombre del cliente y se crea la factura usando los datos del trabajo (descripción, monto, carJobId).
 - **Múltiples servicios por factura:** desde el formulario de creación de facturas se pueden seleccionar varios trabajos mediante checkboxes. Cada trabajo se convierte en un ítem de la factura.
@@ -438,7 +438,7 @@ Todos estos valores deben recalcularse automáticamente cada vez que se modifiqu
 - Tras 5 intentos fallidos de login, la cuenta se bloquea y el servidor responde HTTP 423 con `locked: true`.
 - La página de configuración permite desbloquear la cuenta y cambiar la contraseña.
 - Al cerrar un periodo contable, todos los trabajos dentro del rango se marcan como cerrados y no se pueden editar/eliminar.
-- El escáner VIN captura correctamente códigos Code 128/Code 39 desde la cámara trasera y rellena el campo VIN.
+- El escáner VIN captura correctamente códigos Code 128/Code 39: abre la cámara trasera, el usuario toma una foto manualmente y decodifica en esa imagen.
 - El PDF de pagos por empleado descarga un archivo válido con header de empresa, periodos, trabajos y ganancia proporcional sin precio de servicio visible.
 - Al hacer clic en el nombre de un periodo en la tabla de contabilidad, se abre una página de detalle con trabajos, gastos y resumen.
 - Al hacer clic en una fila de trabajo, se abre un modal con todos los detalles del trabajo.
@@ -480,7 +480,7 @@ El diseño completo (colores, tipografía, layout, componentes, login, responsiv
 10. **Exportación:** Excel con `exceljs` (estilos: encabezados, filas alternadas, formato moneda, totales).
 11. **Fechas límite con `$gte`/`$lt`:** al usar `LocalDate` como ISODate con offset UTC, `$lte` excluye documentos del día límite. Se usa `$gte`/`$lt` con `end.plusDays(1)` para incluir correctamente todo el rango.
 12. **Cierre en cascada:** al cerrar un periodo, se marcan todos los `CarJob` del rango como `closed=true`, simplificando el modelo (sin relación many-to-many).
-13. **Escáner VIN con `html5-qrcode`:** sobre `quagga` porque tiene soporte nativo para Code 128 (estándar VIN).
+13. **Escáner VIN foto-based con `@zxing/library`:** el usuario abre la cámara, ve el video en vivo, presiona "Tomar foto" para capturar un frame, y el código se decodifica mediante `@zxing/library`. Compatible con iOS y Android. No usa escaneo continuo en vivo.
 14. **Bloqueo por fuerza bruta:** 5 intentos / 30 min, configurable vía variables de entorno. Desbloqueo manual desde `/settings` (sin notificación por correo en MVP).
 15. **Login oscuro vs app clara:** la pantalla de login usa fondo oscuro profesional (automotriz), la app interior usa fondo claro funcional.
 16. **PDF de pagos proporcional:** `job.payment / totalIncome * employeeAmount`. El empleado ve su ganancia por trabajo sin conocer el precio total del servicio.
@@ -491,7 +491,9 @@ El diseño completo (colores, tipografía, layout, componentes, login, responsiv
 21. **Factura desde trabajo:** desde el modal de detalle de un CarJob se puede generar una factura escribiendo el nombre del cliente. La descripción y el monto se toman del trabajo, simplificando el flujo.
 22. **Múltiples trabajos por factura:** el formulario de creación de facturas usa checkboxes para seleccionar varios CarJobs, permitiendo agrupar servicios de un mismo cliente.
 23. **PDF estilo ticket POS 80mm:** la factura se genera con ancho fijo 302pt, márgenes reducidos (8pt), encabezado centrado, tabla con wrap de descripción, precio alineado a la derecha, total grande. El alto de página se calcula dinámicamente según el contenido para que no sobre espacio en blanco. Texto en inglés.
-24. **Logo opcional en PDF:** si existe `backend/assets/logo.png` se muestra centrado en la parte superior; si no, se omite sin errores. El usuario debe colocar el archivo manualmente.
+24. **Logo opcional en PDF:** si existe `backend/assets/logo.PNG` se muestra centrado en la parte superior; si no, se omite sin errores. El usuario debe colocar el archivo manualmente. El nombre debe tener extensión mayúscula `.PNG` (sensible a mayúsculas en Linux/Render).
+25. **iOS date input fix:** Safari iOS no muestra placeholder nativo en `<input type="date">`. Se creó un componente `DateInput` que superpone un `<span>` con el placeholder cuando el input está vacío.
+26. **VIN scanner sin escaneo continuo:** se cambió de detección automática continua (video → `BarcodeDetector`/`@zxing/library`) a captura manual: el usuario ve el video en vivo, presiona "Tomar foto", se captura un frame y se decodifica. Más fiable en iOS.
 
 ---
 
