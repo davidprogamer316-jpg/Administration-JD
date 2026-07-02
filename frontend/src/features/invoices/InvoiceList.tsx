@@ -302,12 +302,13 @@ export default function InvoiceList() {
                   >
                     <div className="flex items-center justify-end gap-1">
                       <button
-                        onClick={() =>
+                        onClick={() => {
+                          const token = localStorage.getItem('token');
                           window.open(
-                            `${process.env.NEXT_PUBLIC_API_URL}/invoices/${inv._id}/pdf`,
+                            `${process.env.NEXT_PUBLIC_API_URL}/invoices/${inv._id}/pdf?token=${token}`,
                             '_blank'
-                          )
-                        }
+                          );
+                        }}
                         className="p-1.5 text-text-muted hover:text-accent transition-colors"
                         title="Ver factura"
                       >
@@ -385,8 +386,9 @@ export default function InvoiceList() {
             <div className="flex gap-2 mt-2">
               <button
                 onClick={() => {
+                  const token = localStorage.getItem('token');
                   window.open(
-                    `${process.env.NEXT_PUBLIC_API_URL}/invoices/${detailInvoice._id}/pdf`,
+                    `${process.env.NEXT_PUBLIC_API_URL}/invoices/${detailInvoice._id}/pdf?token=${token}`,
                     '_blank'
                   );
                 }}

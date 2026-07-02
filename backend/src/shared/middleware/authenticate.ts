@@ -12,7 +12,10 @@ export function authenticateToken(
   next: NextFunction
 ): void {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  let token = authHeader && authHeader.split(' ')[1];
+  if (!token) {
+    token = req.query.token as string | undefined;
+  }
 
   if (!token) {
     res.status(401).json({ message: 'Token requerido' });
