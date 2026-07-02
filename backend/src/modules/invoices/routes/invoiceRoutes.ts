@@ -8,6 +8,7 @@ router.use(authenticateToken);
 router.get('/', controller.list);
 router.get('/:id', controller.getById);
 router.get('/:id/pdf', controller.downloadPdf);
+router.get('/:id/employee-earnings', controller.employeeEarnings);
 router.post('/', controller.create);
 router.delete('/:id', controller.remove);
 
