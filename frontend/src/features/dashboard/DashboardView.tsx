@@ -15,6 +15,7 @@ import {
   Pie,
   Cell,
 } from 'recharts';
+import DateInput from '@/components/DateInput';
 import {
   Calculator,
   BarChart3,
@@ -98,18 +99,18 @@ export default function DashboardView() {
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2 mb-6">
-        <input
-          type="date"
+        <DateInput
           value={startDate}
           onChange={(e) => setStartDate(e.target.value)}
-          className="rounded-lg border border-border bg-bg-page px-3.5 py-2 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 transition-colors w-full sm:w-auto"
+          placeholder="Fecha inicio"
+          className="rounded-lg border border-border bg-bg-page px-3.5 py-2 text-sm outline-none focus:ring-2 focus:ring-accent/40 transition-colors w-full sm:w-auto"
         />
         <span className="text-text-muted text-sm">a</span>
-        <input
-          type="date"
+        <DateInput
           value={endDate}
           onChange={(e) => setEndDate(e.target.value)}
-          className="rounded-lg border border-border bg-bg-page px-3.5 py-2 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 transition-colors w-full sm:w-auto"
+          placeholder="Fecha fin"
+          className="rounded-lg border border-border bg-bg-page px-3.5 py-2 text-sm outline-none focus:ring-2 focus:ring-accent/40 transition-colors w-full sm:w-auto"
         />
         <button
           onClick={load}

@@ -2,182 +2,152 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Camera, X, Scan } from 'lucide-react';
+import { Camera, X, CameraIcon } from 'lucide-react';
 
 interface VinScannerProps {
   onScan: (vin: string) => void;
 }
 
-const BARCODE_FORMATS = [
-  'code_128', 'code_39', 'pdf417', 'qr_code', 'data_matrix',
-] as const;
-
 export default function VinScanner({ onScan }: VinScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const zxingRef = useRef<any>(null);
-  const [scanning, setScanning] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
-  const [status, setStatus] = useState('');
 
   useEffect(() => {
     return () => {
-      if (zxingRef.current) {
-        try { zxingRef.current.reset(); } catch {}
-        zxingRef.current = null;
-      }
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-      }
+      stopStream();
     };
   }, []);
 
   useEffect(() => {
-    document.body.style.overflow = scanning ? 'hidden' : '';
+    document.body.style.overflow = showCamera ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
-  }, [scanning]);
+  }, [showCamera]);
 
-  function stopScanning() {
-    if (zxingRef.current) {
-      try { zxingRef.current.reset(); } catch {}
-      zxingRef.current = null;
-    }
+  function stopStream() {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
-    setScanning(false);
-    setStatus('');
   }
 
-  // Native BarcodeDetector (Android)
-  function startNativeDetector(video: HTMLVideoElement) {
-    if (!('BarcodeDetector' in window)) return false;
-    let detector: any;
-    try {
-      detector = new (window as any).BarcodeDetector({ formats: BARCODE_FORMATS as any });
-    } catch { return false; }
-
-    setStatus('Escaneando...');
-    let running = true;
-    const detect = async () => {
-      if (!running || !video) return;
-      try {
-        const codes = await detector.detect(video);
-        if (codes.length > 0) {
-          const text = codes[0].rawValue.replace(/\*/g, '').trim();
-          if (text) { running = false; onScan(text); stopScanning(); return; }
-        }
-      } catch {}
-      requestAnimationFrame(detect);
-    };
-    detect();
-    return true;
+  function closeCamera() {
+    stopStream();
+    setShowCamera(false);
+    setProcessing(false);
+    setError('');
   }
 
-  // ZXing fallback (iOS)
-  async function startZxing(video: HTMLVideoElement) {
+  async function openCamera() {
+    setError('');
+    setProcessing(false);
     try {
-      setStatus('Cargando escáner...');
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+      });
+      streamRef.current = stream;
+      setShowCamera(true);
+    } catch {
+      setError('No se pudo acceder a la cámara');
+    }
+  }
+
+  async function takePhoto() {
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    if (!video || !stream) return;
+
+    setProcessing(true);
+    setError('');
+
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(video, 0, 0);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+
       const { BrowserMultiFormatReader } = await import('@zxing/library');
       const reader = new BrowserMultiFormatReader();
-      zxingRef.current = reader;
-
-      setStatus('Escaneando...');
-      reader.decodeFromVideoElementContinuously(video, (result: any) => {
-        const text = result?.getText()?.replace(/\*/g, '').trim();
-        if (text) { onScan(text); stopScanning(); }
-      });
-    } catch (err: any) {
-      setError(err?.message || 'Error al iniciar escáner');
+      const result = await reader.decodeFromImageUrl(dataUrl);
+      const text = result?.getText()?.replace(/\*/g, '').trim();
+      if (text) {
+        onScan(text);
+        closeCamera();
+      } else {
+        setError('No se detectó ningún código de barras');
+        setProcessing(false);
+      }
+    } catch {
+      setError('No se detectó ningún código de barras. Intenta de nuevo con mejor iluminación.');
+      setProcessing(false);
     }
   }
 
-  // Attach stream to video once DOM is ready
   useEffect(() => {
-    if (!scanning || !streamRef.current) return;
+    if (!showCamera || !streamRef.current) return;
     const video = videoRef.current;
     if (!video) return;
-
     video.srcObject = streamRef.current;
-
-    const onReady = () => {
-      const nativeOk = startNativeDetector(video);
-      if (!nativeOk) startZxing(video);
-    };
-
-    if (!video.paused && video.currentTime > 0) {
-      onReady();
-    } else {
-      video.addEventListener('playing', onReady, { once: true });
-      video.addEventListener('loadedmetadata', onReady, { once: true });
-    }
     video.play().catch(() => setError('Error al reproducir video'));
-  }, [scanning, onScan]);
-
-  const startScanning = useCallback(() => {
-    setError('');
-    setStatus('');
-
-    const promise = navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-    });
-
-    promise.then((stream) => {
-      streamRef.current = stream;
-      setScanning(true);
-    }).catch((err) => {
-      setError(err?.message || 'No se pudo acceder a la cámara');
-    });
-  }, []);
+  }, [showCamera]);
 
   return (
     <>
-      {!scanning ? (
-        <button
-          type="button"
-          onClick={startScanning}
-          className="flex items-center gap-2 rounded-lg border border-border text-text-muted px-3.5 py-2.5 text-sm hover:bg-bg-page transition-colors"
-        >
-          <Camera size={16} />
-          Escanear VIN
-        </button>
-      ) : (
-        createPortal(
-          <div className="fixed inset-0 z-[60] bg-black flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 text-white shrink-0">
-              <span className="text-sm font-medium">Escanear código</span>
-              <button
-                type="button"
-                onClick={stopScanning}
-                className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="flex-1 relative min-h-0 h-full">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-            </div>
-            <div className="flex items-center justify-center gap-2 px-4 py-4 text-white/80 text-sm shrink-0">
-              <Scan size={18} />
-              Apunta al código de barras del VIN
-            </div>
+      <button
+        type="button"
+        onClick={openCamera}
+        className="flex items-center gap-2 rounded-lg border border-border text-text-muted px-3.5 py-2.5 text-sm hover:bg-bg-page transition-colors"
+      >
+        <Camera size={16} />
+        Escanear VIN
+      </button>
+      {showCamera && createPortal(
+        <div className="fixed inset-0 z-[60] bg-black flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 text-white shrink-0">
+            <span className="text-sm font-medium">Tomar foto del código</span>
+            <button
+              type="button"
+              onClick={closeCamera}
+              className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          <div className="flex-1 relative min-h-0 h-full">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="absolute inset-0 w-full h-full object-cover"
+            />
             {error && (
-              <p className="text-danger text-xs text-center px-4 pb-4">{error}</p>
+              <p className="absolute bottom-24 left-0 right-0 text-center text-danger text-sm bg-black/60 py-2">
+                {error}
+              </p>
             )}
-            {!error && status && (
-              <p className="text-white/60 text-xs text-center px-4 pb-4">{status}</p>
-            )}
-          </div>,
-          document.body
-        )
+          </div>
+          <div className="flex items-center justify-center px-4 py-6 shrink-0">
+            <button
+              type="button"
+              onClick={takePhoto}
+              disabled={processing}
+              className="flex items-center gap-2 rounded-full bg-white px-8 py-3.5 text-black font-medium shadow-lg hover:bg-white/90 transition-colors disabled:opacity-50"
+            >
+              {processing ? (
+                <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <CameraIcon size={20} />
+              )}
+              {processing ? 'Procesando...' : 'Tomar foto'}
+            </button>
+          </div>
+        </div>,
+        document.body
       )}
     </>
   );

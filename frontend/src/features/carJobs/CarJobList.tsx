@@ -7,6 +7,7 @@ import { Plus, Pencil, Trash2, Search, FileDown, FileText } from 'lucide-react';
 import { downloadFromApi } from '@/lib/download';
 import VinScanner from '@/components/VinScanner';
 import Modal from '@/components/Modal';
+import DateInput from '@/components/DateInput';
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('es-ES', {
@@ -171,18 +172,18 @@ export default function CarJobList() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <form onSubmit={handleFilter} className="flex flex-wrap items-center gap-2">
-          <input
-            type="date"
+          <DateInput
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className="rounded-lg border border-border bg-bg-page px-3.5 py-2 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 transition-colors w-full sm:w-auto"
+            placeholder="Fecha inicio"
+            className="rounded-lg border border-border bg-bg-page px-3.5 py-2 text-sm outline-none focus:ring-2 focus:ring-accent/40 transition-colors w-full sm:w-auto"
           />
           <span className="text-text-muted text-sm">a</span>
-          <input
-            type="date"
+          <DateInput
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            className="rounded-lg border border-border bg-bg-page px-3.5 py-2 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 transition-colors w-full sm:w-auto"
+            placeholder="Fecha fin"
+            className="rounded-lg border border-border bg-bg-page px-3.5 py-2 text-sm outline-none focus:ring-2 focus:ring-accent/40 transition-colors w-full sm:w-auto"
           />
           <input
             type="text"

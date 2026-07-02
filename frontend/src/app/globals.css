@@ -22,3 +22,7 @@ body {
   color: var(--color-text-body);
   font-family: var(--font-body);
 }
+
+input[type="date"] {
+  min-height: 38px;
+}
