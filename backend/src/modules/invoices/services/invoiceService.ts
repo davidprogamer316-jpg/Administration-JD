@@ -18,25 +18,25 @@ const QR_SIZE = 72;
 
 const PAPER_INFO: Record<string, { label: string; specs: string }> = {
   premium: {
-    label: 'Papel Premium',
-    specs: 'Rechazo solar: 40%, Protección UV: 90%, Garantía: 6 meses',
+    label: 'Premium Film',
+    specs: 'Solar rejection: 40%, UV protection: 90%, Warranty: 6 months',
   },
   ceramic: {
-    label: 'Papel Ceramic',
-    specs: 'Rechazo solar: 70%, Protección UV: 100%, Garantía: 5 años',
+    label: 'Ceramic Film',
+    specs: 'Solar rejection: 70%, UV protection: 100%, Warranty: 5 years',
   },
   ultra_ceramic: {
-    label: 'Papel Ultra Cerámico',
-    specs: 'Rechazo solar: 99%, Protección UV: 100%, Garantía: 10 años',
+    label: 'Ultra Ceramic Film',
+    specs: 'Solar rejection: 99%, UV protection: 100%, Warranty: 10 years',
   },
 };
 
 function formatMoney(n: number): string {
-  return `$${n.toLocaleString('es-CO', { minimumFractionDigits: 2 })}`;
+  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 }
 
 function formatDate(date: Date): string {
-  return date.toLocaleDateString('es-ES', {
+  return date.toLocaleDateString('en-US', {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
