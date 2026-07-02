@@ -8,7 +8,7 @@ interface VinScannerProps {
   onScan: (vin: string) => void;
 }
 
-// Limit to formats supported by Safari + Chrome BarcodeDetector
+// Subset supported by both Chrome and Safari BarcodeDetector
 const BARCODE_FORMATS = [
   'code_128', 'code_39', 'pdf417', 'qr_code', 'data_matrix',
 ] as const;
@@ -19,6 +19,7 @@ export default function VinScanner({ onScan }: VinScannerProps) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState('');
+  const scanningRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -35,71 +36,98 @@ export default function VinScanner({ onScan }: VinScannerProps) {
     return () => { document.body.style.overflow = ''; };
   }, [scanning]);
 
-  // Attach stream to video & start BarcodeDetector once DOM is ready
-  useEffect(() => {
-    if (!scanning || !streamRef.current) return;
-    const stream = streamRef.current;
-    const video = videoRef.current;
-    if (!video) return;
-
-    video.srcObject = stream;
-
-    const onReady = () => {
-      if (!('BarcodeDetector' in window)) {
-        setError('Escáner no disponible en este navegador');
-        return;
-      }
-      let detector: any;
-      try {
-        detector = new (window as any).BarcodeDetector({
-          formats: BARCODE_FORMATS as any,
-        });
-      } catch {
-        setError('Error al inicializar escáner');
-        return;
-      }
-      let running = true;
-      timerRef.current = setInterval(async () => {
-        if (!running || !video) return;
-        try {
-          const codes = await detector.detect(video);
-          if (codes.length > 0) {
-            const text = codes[0].rawValue.replace(/\*/g, '').trim();
-            if (text) {
-              running = false;
-              onScan(text);
-              stopScanning();
-            }
-          }
-        } catch {}
-      }, 300);
-      return () => { running = false; };
-    };
-
-    // Wait for video metadata + canplay before scanning
-    const onCanPlay = () => {
-      video.removeEventListener('loadedmetadata', onReady);
-      video.removeEventListener('canplay', onCanPlay);
-      onReady();
-    };
-    video.addEventListener('loadedmetadata', onReady, { once: true });
-    video.addEventListener('canplay', onCanPlay, { once: true });
-    video.play().catch(() => setError('Error al reproducir video'));
-  }, [scanning, onScan]);
-
-  const stopScanning = useCallback(() => {
+  function stopScanning() {
+    scanningRef.current = false;
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
     setScanning(false);
-  }, []);
+  }
+
+  // Try native BarcodeDetector
+  function startNativeDetector(video: HTMLVideoElement) {
+    if (!('BarcodeDetector' in window)) return false;
+
+    let detector: any;
+    try {
+      detector = new (window as any).BarcodeDetector({ formats: BARCODE_FORMATS as any });
+    } catch { return false; }
+
+    scanningRef.current = true;
+    timerRef.current = setInterval(async () => {
+      if (!scanningRef.current) return;
+      try {
+        const codes = await detector.detect(video);
+        if (codes.length > 0) {
+          const text = codes[0].rawValue.replace(/\*/g, '').trim();
+          if (text) { onScan(text); stopScanning(); }
+        }
+      } catch {}
+    }, 300);
+    return true;
+  }
+
+  // Fallback using html5-qrcode scanFile (no getUserMedia inside)
+  async function startHtml5Fallback() {
+    try {
+      const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import('html5-qrcode');
+      const scanner = new Html5Qrcode('vin-reader-scanner', {
+        verbose: false,
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.CODE_93,
+          Html5QrcodeSupportedFormats.ITF,
+          Html5QrcodeSupportedFormats.PDF_417,
+          Html5QrcodeSupportedFormats.DATA_MATRIX,
+          Html5QrcodeSupportedFormats.QR_CODE,
+        ],
+      });
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d')!;
+
+      scanningRef.current = true;
+      timerRef.current = setInterval(async () => {
+        const video = videoRef.current;
+        if (!video || !scanningRef.current) return;
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        ctx.drawImage(video, 0, 0);
+        const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.8));
+        if (!blob || !scanningRef.current) return;
+        try {
+          const result = await scanner.scanFileV2(new File([blob], 'frame.jpg', { type: 'image/jpeg' }), false);
+          const text = result?.decodedText?.replace(/\*/g, '').trim();
+          if (text) { onScan(text); stopScanning(); }
+        } catch {}
+      }, 400);
+    } catch { setError('No se pudo iniciar el escáner'); }
+  }
+
+  // Attach stream to video once DOM is ready
+  useEffect(() => {
+    if (!scanning || !streamRef.current) return;
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.srcObject = streamRef.current;
+
+    const startScanning = () => {
+      const nativeOk = startNativeDetector(video);
+      if (!nativeOk) startHtml5Fallback();
+    };
+
+    video.addEventListener('loadedmetadata', startScanning, { once: true });
+    video.play().catch(() => setError('Error al reproducir video'));
+  }, [scanning, onScan]);
 
   const startScanning = useCallback(() => {
     setError('');
 
-    // getUserMedia called SYNCHRONOUSLY during user gesture (required by iOS)
+    // getUserMedia called SYNCHRONOUSLY during user gesture (iOS requirement)
     const promise = navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
     });
@@ -144,6 +172,8 @@ export default function VinScanner({ onScan }: VinScannerProps) {
                 muted
                 className="absolute inset-0 w-full h-full object-cover"
               />
+              {/* Hidden container for html5-qrcode fallback */}
+              <div id="vin-reader-scanner" className="hidden" />
             </div>
             <div className="flex items-center justify-center gap-2 px-4 py-4 text-white/80 text-sm shrink-0">
               <Scan size={18} />
