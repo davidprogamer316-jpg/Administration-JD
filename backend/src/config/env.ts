@@ -10,8 +10,11 @@ export const env = {
   loginMaxAttempts: parseInt(process.env.LOGIN_MAX_ATTEMPTS || '5', 10),
   loginLockDurationMinutes: parseInt(process.env.LOGIN_LOCK_DURATION_MINUTES || '30', 10),
   companyProfitRate: parseFloat(process.env.COMPANY_PROFIT_RATE || '0.20'),
-  corsOrigin: (() => {
+  corsOrigins: (() => {
     const raw = process.env.CORS_ORIGIN || process.env.CORS_ORIGINS || 'http://localhost:3000';
-    try { return new URL(raw).origin; } catch { return raw; }
+    return raw.split(',').map((s) => {
+      try { return new URL(s.trim()).origin; } catch { return s.trim(); }
+    }).filter(Boolean);
   })(),
+  allowVercelPreviews: process.env.CORS_ALLOW_VERCEL_PREVIEWS !== 'false',
 };

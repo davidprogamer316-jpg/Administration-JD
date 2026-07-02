@@ -11,7 +11,20 @@ import { errorHandler } from './shared/middleware/errorHandler.js';
 
 const app = express();
 
-app.use(cors({ origin: env.corsOrigin, credentials: true }));
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || env.corsOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    if (env.allowVercelPreviews && origin.endsWith('.vercel.app')) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error(`Origin ${origin} not allowed by CORS`));
+  },
+  credentials: true,
+}));
 app.use(express.json());
 
 app.get('/api/health', (_req, res) => {
