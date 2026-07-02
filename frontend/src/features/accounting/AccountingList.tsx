@@ -154,10 +154,10 @@ export default function AccountingList() {
                 <th className="text-right px-3 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
                   Gastos
                 </th>
-                <th className="text-right px-3 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
+                <th className="text-right px-3 py-3 text-text-muted text-xs font-medium uppercase tracking-wider hidden sm:table-cell">
                   DDDG
                 </th>
-                <th className="text-right px-3 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
+                <th className="text-right px-3 py-3 text-text-muted text-xs font-medium uppercase tracking-wider hidden sm:table-cell">
                   Ganancia
                 </th>
                 <th className="text-right px-3 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
@@ -166,12 +166,12 @@ export default function AccountingList() {
                 {allEmployeeNames.map((name) => (
                   <th
                     key={name}
-                    className="text-right px-3 py-3 text-text-muted text-xs font-medium uppercase tracking-wider"
+                    className="text-right px-3 py-3 text-text-muted text-xs font-medium uppercase tracking-wider hidden lg:table-cell"
                   >
                     {name}
                   </th>
                 ))}
-                <th className="text-right px-3 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
+                <th className="text-right px-3 py-3 text-text-muted text-xs font-medium uppercase tracking-wider hidden lg:table-cell">
                   Jefe
                 </th>
                 <th className="text-center px-3 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
@@ -202,10 +202,10 @@ export default function AccountingList() {
                   <td className="px-3 py-3 text-sm text-text-body text-right">
                     {formatMoney(p.expenses)}
                   </td>
-                  <td className="px-3 py-3 text-sm text-text-body text-right font-medium">
+                  <td className="px-3 py-3 text-sm text-text-body text-right font-medium hidden sm:table-cell">
                     {formatMoney(p.dddg)}
                   </td>
-                  <td className="px-3 py-3 text-sm text-text-body text-right">
+                  <td className="px-3 py-3 text-sm text-text-body text-right hidden sm:table-cell">
                     {formatMoney(p.companyProfit)}
                   </td>
                   <td className="px-3 py-3 text-sm text-text-body text-right">
@@ -218,13 +218,13 @@ export default function AccountingList() {
                     return (
                       <td
                         key={name}
-                        className="px-3 py-3 text-sm text-text-body text-right"
+                        className="px-3 py-3 text-sm text-text-body text-right hidden lg:table-cell"
                       >
                         {share ? formatMoney(share.amount) : '$0.00'}
                       </td>
                     );
                   })}
-                  <td className="px-3 py-3 text-sm text-text-body text-right font-medium">
+                  <td className="px-3 py-3 text-sm text-text-body text-right font-medium hidden lg:table-cell">
                     {formatMoney(p.bossAmount)}
                   </td>
                   <td className="px-3 py-3 text-center">
