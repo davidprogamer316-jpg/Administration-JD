@@ -187,6 +187,47 @@ export default function AccountingDetailPage() {
               <ExpenseEditor period={period} onUpdate={load} />
             </section>
           </div>
+
+          <section className="rounded-xl border border-border shadow-sm bg-surface p-6 mt-6">
+            <h2 className="text-lg font-heading font-semibold text-text-body mb-4">
+              Ganancias empleados por trabajo
+            </h2>
+            {jobs.length === 0 || period.employeeDistribution.length === 0 ? (
+              <p className="text-text-muted text-sm">No hay datos para mostrar.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left px-2 py-2 text-text-muted text-xs font-medium uppercase tracking-wider">Trabajo</th>
+                      <th className="text-left px-2 py-2 text-text-muted text-xs font-medium uppercase tracking-wider">Empleado</th>
+                      <th className="text-right px-2 py-2 text-text-muted text-xs font-medium uppercase tracking-wider">%</th>
+                      <th className="text-right px-2 py-2 text-text-muted text-xs font-medium uppercase tracking-wider">Ganancia</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {jobs.flatMap((job) =>
+                      period.income > 0
+                        ? period.employeeDistribution.map((emp) => {
+                            const amount = emp.amount * (job.payment / period.income);
+                            return (
+                              <tr key={`${job._id}-${emp.employeeId}`} className="border-b border-border last:border-0">
+                                <td className="px-2 py-2 text-sm text-text-body">{job.description}</td>
+                                <td className="px-2 py-2 text-sm text-text-body">{emp.employeeName}</td>
+                                <td className="px-2 py-2 text-sm text-text-body text-right">{emp.percentageApplied}%</td>
+                                <td className="px-2 py-2 text-sm text-text-body text-right font-medium">
+                                  {formatMoney(Math.round(amount * 100) / 100)}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        : []
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
         </div>
       </main>
     </AuthGuard>
