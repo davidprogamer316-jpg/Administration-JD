@@ -102,6 +102,19 @@ export async function closePeriod(
   }
 }
 
+export async function recalculateAll(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const results = await accountingService.recalculateAllOpen();
+    res.json(results);
+  } catch (err: any) {
+    next(err);
+  }
+}
+
 export async function recalculate(
   req: Request,
   res: Response,

@@ -11,12 +11,12 @@ export function getQuincena(date: Date): QuincenaRange {
   const day = d.getUTCDate();
 
   if (day <= 15) {
-    const start = new Date(Date.UTC(year, month, 1, 12, 0, 0, 0));
+    const start = new Date(Date.UTC(year, month, 1, 0, 0, 0, 0));
     const end = new Date(Date.UTC(year, month, 15, 23, 59, 59, 999));
     return { start, end, periodNumber: 1 };
   }
 
-  const start = new Date(Date.UTC(year, month, 16, 12, 0, 0, 0));
+  const start = new Date(Date.UTC(year, month, 16, 0, 0, 0, 0));
   const end = new Date(Date.UTC(year, month + 1, 0, 23, 59, 59, 999));
   return { start, end, periodNumber: 2 };
 }

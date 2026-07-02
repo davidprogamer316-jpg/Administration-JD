@@ -23,6 +23,7 @@ router.delete(
   accountingController.removeExpenseItem
 );
 router.patch('/:id/close', accountingController.closePeriod);
+router.post('/recalculate-all', accountingController.recalculateAll);
 router.patch('/:id/recalculate', accountingController.recalculate);
 
 export default router;
