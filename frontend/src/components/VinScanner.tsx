@@ -99,13 +99,19 @@ export default function VinScanner({ onScan }: VinScannerProps) {
       timerRef.current = setInterval(async () => {
         const video = videoRef.current;
         if (!video || !scanningRef.current) return;
-        canvas.width = video.videoWidth || 640;
-        canvas.height = video.videoHeight || 480;
+        // Use full video resolution for better barcode detection
+        const w = video.videoWidth || 640;
+        const h = video.videoHeight || 480;
+        if (w === 0 || h === 0) return;
+        canvas.width = w;
+        canvas.height = h;
         ctx.drawImage(video, 0, 0);
-        const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.8));
+        // Use PNG (lossless) for barcode edges
+        const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/png'));
         if (!blob || !scanningRef.current) return;
         try {
-          const result = await scanner.scanFileV2(new File([blob], 'frame.jpg', { type: 'image/jpeg' }), false);
+          const result = await scanner.scanFileV2(
+            new File([blob], 'frame.png', { type: 'image/png' }), false);
           const text = result?.decodedText?.replace(/\*/g, '').trim();
           if (text) { onScan(text); stopScanning(); }
         } catch {}
