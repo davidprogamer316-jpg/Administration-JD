@@ -183,8 +183,10 @@ export async function generatePdf(id: string): Promise<Buffer> {
     // ── Watermark ──
     if (fs.existsSync(WATERMARK_PATH)) {
       doc.save();
-      doc.opacity(0.1);
-      doc.image(WATERMARK_PATH, (PAGE_W - 180) / 2, (pageH - 180) / 2, { width: 180 });
+      doc.opacity(0.05);
+      doc.translate(PAGE_W / 2, pageH / 2);
+      doc.rotate(-30);
+      doc.image(WATERMARK_PATH, -250, -250, { width: 500 });
       doc.restore();
     }
 
