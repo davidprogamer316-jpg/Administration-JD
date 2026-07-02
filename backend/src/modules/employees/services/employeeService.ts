@@ -1,48 +1,4 @@
-import { Employee, IEmployee } from '../models/index.js';
-import { AccountingPeriod } from '../../accounting/models/index.js';
-import { env } from '../../../config/env.js';
-
-async function recalculateOpenPeriods() {
-  const openPeriods = await AccountingPeriod.find({ closed: false });
-  const { CarJob } = await import('../../carJobs/models/index.js');
-  const EmployeeModel = Employee;
-
-  for (const period of openPeriods) {
-    const jobs = await CarJob.find({
-      date: { $gte: period.periodStartDate, $lte: period.periodEndDate },
-    });
-    period.income = jobs.reduce((sum, j) => sum + j.payment, 0);
-
-    period.expenses = period.expenseItems.reduce((s, i) => s + i.amount, 0);
-    period.dddg = Math.max(0, period.income - period.expenses);
-
-    if (period.dddg > 0) {
-      period.companyProfit = period.dddg * env.companyProfitRate;
-    } else {
-      period.companyProfit = 0;
-    }
-
-    period.netToDistribute = period.dddg - period.companyProfit;
-
-    const activeEmployees = await EmployeeModel.find({ active: true }).sort({
-      name: 1,
-    });
-    period.employeeDistribution = activeEmployees.map((emp) => ({
-      employeeId: emp._id.toString(),
-      employeeName: emp.name,
-      percentageApplied: emp.percentage,
-      amount: period.netToDistribute * (emp.percentage / 100),
-    }));
-
-    const totalDistributed = period.employeeDistribution.reduce(
-      (s, e) => s + e.amount,
-      0
-    );
-    period.bossAmount = period.netToDistribute - totalDistributed;
-
-    await period.save();
-  }
-}
+import { Employee } from '../models/index.js';
 
 export async function list() {
   const employees = await Employee.find().sort({ name: 1 });
@@ -79,7 +35,6 @@ export async function create(data: { name: string; percentage: number }) {
   }
 
   const employee = await Employee.create(data);
-  await recalculateOpenPeriods();
   return employee;
 }
 
@@ -112,7 +67,6 @@ export async function update(
   if (data.percentage !== undefined) employee.percentage = data.percentage;
 
   const saved = await employee.save();
-  await recalculateOpenPeriods();
   return saved;
 }
 
@@ -124,7 +78,6 @@ export async function toggleActive(id: string) {
 
   employee.active = !employee.active;
   const saved = await employee.save();
-  await recalculateOpenPeriods();
   return saved;
 }
 
@@ -135,6 +88,5 @@ export async function remove(id: string) {
   }
 
   await Employee.deleteOne({ _id: id });
-  await recalculateOpenPeriods();
   return { message: 'Empleado eliminado' };
 }

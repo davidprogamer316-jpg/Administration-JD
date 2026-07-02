@@ -361,7 +361,7 @@ Todos estos valores deben recalcularse automáticamente cada vez que se modifiqu
 - **Un periodo se auto-crea** cuando se registra un trabajo (`CarJob`) cuya fecha no pertenece a ninguna quincena existente.
 - **Los periodos se pueden cerrar manualmente** (PATCH `…/close`). Una vez cerrado no se puede modificar.
 - **Solo los gastos son editables** en un periodo abierto; las fechas y el ingreso siempre son de solo lectura.
-- Los cambios en el porcentaje o estado (activo/inactivo) de un empleado solo afectan a periodos abiertos; nunca a periodos ya cerrados.
+- Los cambios en el porcentaje o estado (activo/inactivo) de un empleado **solo afectan a trabajos nuevos**. Los periodos ya existentes (abiertos o cerrados) mantienen los porcentajes con los que fueron calculados originalmente.
 - Al desactivar un empleado, se conserva su historial de reparto en periodos anteriores (los `EmployeeShare` ya guardados no se modifican).
 - El porcentaje aplicado a cada empleado se almacena de forma histórica en cada `EmployeeShare`, de modo que cambios futuros en el porcentaje del empleado no alteran periodos ya calculados.
 - El sistema solo permite el acceso al administrador autenticado; ninguna funcionalidad de contabilidad (ver, crear, editar, exportar) es accesible sin sesión válida.
