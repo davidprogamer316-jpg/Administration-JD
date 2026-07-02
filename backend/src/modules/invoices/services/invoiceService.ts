@@ -43,8 +43,12 @@ function formatDate(date: Date): string {
   });
 }
 
-export async function list() {
-  return Invoice.find().sort({ date: -1 });
+export async function list(filters?: { clientName?: string }) {
+  const query: Record<string, unknown> = {};
+  if (filters?.clientName) {
+    query.clientName = { $regex: filters.clientName, $options: 'i' };
+  }
+  return Invoice.find(query).sort({ date: -1 });
 }
 
 export async function getById(id: string) {

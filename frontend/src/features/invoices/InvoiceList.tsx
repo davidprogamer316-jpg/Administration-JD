@@ -4,7 +4,7 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { api } from '@/lib/api';
 import { downloadFromApi } from '@/lib/download';
 import type { CarJob, Invoice } from '@/types';
-import { Plus, FileDown, Trash2, Eye } from 'lucide-react';
+import { Plus, FileDown, Trash2, Eye, Search } from 'lucide-react';
 import Modal from '@/components/Modal';
 
 function formatDate(dateStr: string) {
@@ -31,10 +31,14 @@ export default function InvoiceList() {
   const [carJobs, setCarJobs] = useState<CarJob[]>([]);
   const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
+  const [search, setSearch] = useState('');
 
-  async function load() {
+  async function load(clientFilter?: string) {
     try {
-      const res = await api.get<Invoice[]>('/invoices');
+      const params = new URLSearchParams();
+      if (clientFilter) params.set('clientName', clientFilter);
+      const qs = params.toString();
+      const res = await api.get<Invoice[]>(`/invoices${qs ? `?${qs}` : ''}`);
       setInvoices(res);
     } catch {
       setError('Error al cargar facturas');
@@ -120,9 +124,27 @@ export default function InvoiceList() {
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <p className="text-text-muted text-sm">
-          {invoices.length} factura{invoices.length !== 1 ? 's' : ''} registrada{invoices.length !== 1 ? 's' : ''}
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-text-muted text-sm">
+            {invoices.length} factura{invoices.length !== 1 ? 's' : ''} registrada{invoices.length !== 1 ? 's' : ''}
+          </p>
+          <div className="flex items-center gap-1">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por cliente..."
+              className="w-48 rounded-lg border border-border bg-bg-page px-3 py-2 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 transition-colors"
+              onKeyDown={(e) => { if (e.key === 'Enter') load(search); }}
+            />
+            <button
+              onClick={() => load(search)}
+              className="p-2 text-text-muted hover:text-accent transition-colors"
+            >
+              <Search size={18} />
+            </button>
+          </div>
+        </div>
         <button
           onClick={() => {
             resetForm();
