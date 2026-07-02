@@ -19,6 +19,7 @@ export default function VinScanner({ onScan }: VinScannerProps) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState('');
+  const [status, setStatus] = useState('');
   const scanningRef = useRef(false);
 
   useEffect(() => {
@@ -44,16 +45,19 @@ export default function VinScanner({ onScan }: VinScannerProps) {
       streamRef.current = null;
     }
     setScanning(false);
+    setStatus('');
   }
 
   // Try native BarcodeDetector
   function startNativeDetector(video: HTMLVideoElement) {
     if (!('BarcodeDetector' in window)) return false;
 
+    setStatus('Iniciando escáner...');
     let detector: any;
     try {
       detector = new (window as any).BarcodeDetector({ formats: BARCODE_FORMATS as any });
     } catch { return false; }
+    setStatus('Escaneando...');
 
     scanningRef.current = true;
     timerRef.current = setInterval(async () => {
@@ -72,7 +76,9 @@ export default function VinScanner({ onScan }: VinScannerProps) {
   // Fallback using html5-qrcode scanFile (no getUserMedia inside)
   async function startHtml5Fallback() {
     try {
+      setStatus('Cargando escáner...');
       const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import('html5-qrcode');
+      setStatus('Escaneando...');
       const scanner = new Html5Qrcode('vin-reader-scanner', {
         verbose: false,
         formatsToSupport: [
@@ -120,12 +126,18 @@ export default function VinScanner({ onScan }: VinScannerProps) {
       if (!nativeOk) startHtml5Fallback();
     };
 
-    video.addEventListener('loadedmetadata', startScanning, { once: true });
+    // Check if metadata already loaded (common on iOS)
+    if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
+      startScanning();
+    } else {
+      video.addEventListener('loadedmetadata', startScanning, { once: true });
+    }
     video.play().catch(() => setError('Error al reproducir video'));
   }, [scanning, onScan]);
 
   const startScanning = useCallback(() => {
     setError('');
+    setStatus('');
 
     // getUserMedia called SYNCHRONOUSLY during user gesture (iOS requirement)
     const promise = navigator.mediaDevices.getUserMedia({
@@ -181,6 +193,9 @@ export default function VinScanner({ onScan }: VinScannerProps) {
             </div>
             {error && (
               <p className="text-danger text-xs text-center px-4 pb-4">{error}</p>
+            )}
+            {!error && status && (
+              <p className="text-white/60 text-xs text-center px-4 pb-4">{status}</p>
             )}
           </div>,
           document.body
