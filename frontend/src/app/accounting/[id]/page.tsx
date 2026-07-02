@@ -19,6 +19,7 @@ function formatDate(dateStr: string) {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
+    timeZone: 'UTC',
   });
 }
 
@@ -192,7 +193,7 @@ export default function AccountingDetailPage() {
             <h2 className="text-lg font-heading font-semibold text-text-body mb-4">
               Ganancias empleados por trabajo
             </h2>
-            {jobs.length === 0 || period.employeeDistribution.length === 0 ? (
+            {jobs.length === 0 ? (
               <p className="text-text-muted text-sm">No hay datos para mostrar.</p>
             ) : (
               <div className="overflow-x-auto">
@@ -207,14 +208,14 @@ export default function AccountingDetailPage() {
                   </thead>
                   <tbody>
                     {jobs.flatMap((job) =>
-                      period.income > 0
-                        ? period.employeeDistribution.map((emp) => {
-                            const amount = emp.amount * (job.payment / period.income);
+                      period.income > 0 && job.employeeShares?.length
+                        ? job.employeeShares.map((share) => {
+                            const amount = period.netToDistribute * (share.percentage / 100) * (job.payment / period.income);
                             return (
-                              <tr key={`${job._id}-${emp.employeeId}`} className="border-b border-border last:border-0">
+                              <tr key={`${job._id}-${share.employeeId}`} className="border-b border-border last:border-0">
                                 <td className="px-2 py-2 text-sm text-text-body">{job.description}</td>
-                                <td className="px-2 py-2 text-sm text-text-body">{emp.employeeName}</td>
-                                <td className="px-2 py-2 text-sm text-text-body text-right">{emp.percentageApplied}%</td>
+                                <td className="px-2 py-2 text-sm text-text-body">{share.employeeName}</td>
+                                <td className="px-2 py-2 text-sm text-text-body text-right">{share.percentage}%</td>
                                 <td className="px-2 py-2 text-sm text-text-body text-right font-medium">
                                   {formatMoney(Math.round(amount * 100) / 100)}
                                 </td>

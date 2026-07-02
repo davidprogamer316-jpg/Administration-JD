@@ -2,6 +2,7 @@ import { CarJob } from '../models/index.js';
 import { AccountingPeriod } from '../../accounting/models/index.js';
 import { getQuincena } from '../../../shared/utils/quincena.js';
 import { recalculateById } from '../../accounting/services/accountingService.js';
+import { Employee } from '../../employees/models/index.js';
 
 async function ensureAccountingPeriod(date: Date) {
   const range = getQuincena(date);
@@ -28,6 +29,15 @@ async function ensureAccountingPeriod(date: Date) {
   }
 
   return period;
+}
+
+async function snapshotEmployeeShares() {
+  const employees = await Employee.find({ active: true }).sort({ name: 1 });
+  return employees.map((emp) => ({
+    employeeId: emp._id.toString(),
+    employeeName: emp.name,
+    percentage: emp.percentage,
+  }));
 }
 
 export async function list(filters?: { startDate?: string; endDate?: string; vin?: string }) {
@@ -82,6 +92,7 @@ export async function create(data: {
     description: data.description,
     payment: data.payment,
     paperTypes: data.paperTypes || [],
+    employeeShares: await snapshotEmployeeShares(),
   });
 
   await recalculateById(period._id.toString());
@@ -113,6 +124,7 @@ export async function update(
   if (data.description !== undefined) job.description = data.description;
   if (data.payment !== undefined) job.payment = data.payment;
   if (data.paperTypes !== undefined) job.paperTypes = data.paperTypes;
+  job.employeeShares = await snapshotEmployeeShares();
 
   await job.save();
 

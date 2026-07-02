@@ -1,6 +1,5 @@
 import { AccountingPeriod, IAccountingPeriod } from '../models/index.js';
 import { CarJob } from '../../carJobs/models/index.js';
-import { Employee } from '../../employees/models/index.js';
 import { env } from '../../../config/env.js';
 
 async function recalculate(period: IAccountingPeriod) {
@@ -24,21 +23,35 @@ async function recalculate(period: IAccountingPeriod) {
 
   period.netToDistribute = period.dddg - period.companyProfit;
 
-  const activeEmployees = await Employee.find({ active: true }).sort({
-    name: 1,
-  });
-  period.employeeDistribution = activeEmployees.map((emp) => ({
-    employeeId: emp._id.toString(),
-    employeeName: emp.name,
-    percentageApplied: emp.percentage,
-    amount: period.netToDistribute * (emp.percentage / 100),
+  // Aggregate employee earnings per job using each job's snapshot
+  const empMap = new Map<string, { name: string; percentage: number; amount: number }>();
+  const totalIncome = period.income;
+
+  for (const job of jobs) {
+    if (totalIncome <= 0 || !job.employeeShares?.length) continue;
+    for (const share of job.employeeShares) {
+      const empId = share.employeeId;
+      const proportionalAmount = period.netToDistribute * (share.percentage / 100) * (job.payment / totalIncome);
+      if (empMap.has(empId)) {
+        empMap.get(empId)!.amount += proportionalAmount;
+      } else {
+        empMap.set(empId, { name: share.employeeName, percentage: share.percentage, amount: proportionalAmount });
+      }
+    }
+  }
+
+  period.employeeDistribution = Array.from(empMap.entries()).map(([employeeId, data]) => ({
+    employeeId,
+    employeeName: data.name,
+    percentageApplied: data.percentage,
+    amount: Math.round(data.amount * 100) / 100,
   }));
 
   const totalDistributed = period.employeeDistribution.reduce(
     (sum, e) => sum + e.amount,
     0
   );
-  period.bossAmount = period.netToDistribute - totalDistributed;
+  period.bossAmount = Math.round((period.netToDistribute - totalDistributed) * 100) / 100;
 
   return period.save();
 }

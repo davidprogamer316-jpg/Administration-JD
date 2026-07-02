@@ -42,6 +42,11 @@ export interface CarJob {
   payment: number;
   closed: boolean;
   paperTypes: string[];
+  employeeShares: Array<{
+    employeeId: string;
+    employeeName: string;
+    percentage: number;
+  }>;
 }
 
 export interface AdminUser {

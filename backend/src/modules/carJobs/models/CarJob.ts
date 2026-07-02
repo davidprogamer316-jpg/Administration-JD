@@ -1,5 +1,11 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface IEmployeeShare {
+  employeeId: string;
+  employeeName: string;
+  percentage: number;
+}
+
 export interface ICarJob extends Document {
   date: Date;
   vin: string;
@@ -7,7 +13,17 @@ export interface ICarJob extends Document {
   payment: number;
   closed: boolean;
   paperTypes: string[];
+  employeeShares: IEmployeeShare[];
 }
+
+const EmployeeShareSchema = new Schema<IEmployeeShare>(
+  {
+    employeeId: { type: String, required: true },
+    employeeName: { type: String, required: true },
+    percentage: { type: Number, required: true },
+  },
+  { _id: false }
+);
 
 const CarJobSchema = new Schema<ICarJob>(
   {
@@ -17,6 +33,7 @@ const CarJobSchema = new Schema<ICarJob>(
     payment: { type: Number, required: true, min: 0 },
     closed: { type: Boolean, default: false },
     paperTypes: { type: [String], enum: ['premium', 'ceramic', 'ultra_ceramic'], default: [] },
+    employeeShares: { type: [EmployeeShareSchema], default: [] },
   },
   { timestamps: true }
 );

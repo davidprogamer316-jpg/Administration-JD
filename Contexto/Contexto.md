@@ -361,7 +361,7 @@ Todos estos valores deben recalcularse automáticamente cada vez que se modifiqu
 - **Un periodo se auto-crea** cuando se registra un trabajo (`CarJob`) cuya fecha no pertenece a ninguna quincena existente.
 - **Los periodos se pueden cerrar manualmente** (PATCH `…/close`). Una vez cerrado no se puede modificar.
 - **Solo los gastos son editables** en un periodo abierto; las fechas y el ingreso siempre son de solo lectura.
-- Los cambios en el porcentaje o estado (activo/inactivo) de un empleado **solo afectan a trabajos nuevos**. Los periodos ya existentes (abiertos o cerrados) mantienen los porcentajes con los que fueron calculados originalmente.
+- Los cambios en el porcentaje o estado (activo/inactivo) de un empleado **solo afectan a trabajos nuevos**. Cada `CarJob` almacena un snapshot de los porcentajes al momento de crearse. Los trabajos ya existentes mantienen los porcentajes con los que fueron creados.
 - Al desactivar un empleado, se conserva su historial de reparto en periodos anteriores (los `EmployeeShare` ya guardados no se modifican).
 - El porcentaje aplicado a cada empleado se almacena de forma histórica en cada `EmployeeShare`, de modo que cambios futuros en el porcentaje del empleado no alteran periodos ya calculados.
 - El sistema solo permite el acceso al administrador autenticado; ninguna funcionalidad de contabilidad (ver, crear, editar, exportar) es accesible sin sesión válida.
@@ -494,6 +494,8 @@ El diseño completo (colores, tipografía, layout, componentes, login, responsiv
 24. **Logo opcional en PDF:** si existe `backend/assets/logo.PNG` se muestra centrado en la parte superior; si no, se omite sin errores. El usuario debe colocar el archivo manualmente. El nombre debe tener extensión mayúscula `.PNG` (sensible a mayúsculas en Linux/Render).
 25. **iOS date input fix:** Safari iOS no muestra placeholder nativo en `<input type="date">`. Se creó un componente `DateInput` que superpone un `<span>` con el placeholder cuando el input está vacío.
 26. **VIN scanner sin escaneo continuo:** se cambió de detección automática continua (video → `BarcodeDetector`/`@zxing/library`) a captura manual: el usuario ve el video en vivo, presiona "Tomar foto", se captura un frame y se decodifica. Más fiable en iOS.
+27. **Fechas UTC en quincena:** `getQuincena()` usa `Date.UTC` y `getUTCDate()`/`getUTCMonth()`/`getUTCFullYear()` para evitar que la zona horaria del servidor (UTC) desplace la fecha al mostrarla en Colombia (UTC-5). Las fechas de inicio se crean al mediodía UTC para evitar cruces de medianoche.
+28. **Snapshot de porcentajes por trabajo:** cada `CarJob` almacena `employeeShares` (snapshot de empleados activos con su % al momento de crear el trabajo). Al recalcular un periodo, se suman las ganancias proporcionales por trabajo usando el snapshot de cada trabajo. Cambiar el % de un empleado después no afecta trabajos ya creados.
 
 ---
 

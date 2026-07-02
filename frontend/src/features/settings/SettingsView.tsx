@@ -76,7 +76,7 @@ export default function SettingsView() {
             </p>
             <p className="text-text-body text-sm">
               {user?.createdAt
-                ? new Date(user.createdAt).toLocaleDateString('es-ES')
+                ? new Date(user.createdAt).toLocaleDateString('es-ES', { timeZone: 'UTC' })
                 : '-'}
             </p>
           </div>
