@@ -8,21 +8,21 @@ interface VinScannerProps {
   onScan: (vin: string) => void;
 }
 
+// Limit to formats supported by Safari + Chrome BarcodeDetector
 const BARCODE_FORMATS = [
-  'code_128', 'code_39', 'code_93', 'codabar',
-  'data_matrix', 'pdf417', 'qr_code', 'itf', 'aztec',
+  'code_128', 'code_39', 'pdf417', 'qr_code', 'data_matrix',
 ] as const;
 
 export default function VinScanner({ onScan }: VinScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const rafRef = useRef<number>(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (timerRef.current) clearInterval(timerRef.current);
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
@@ -43,13 +43,23 @@ export default function VinScanner({ onScan }: VinScannerProps) {
     if (!video) return;
 
     video.srcObject = stream;
-    video.play().then(() => {
-      if (!('BarcodeDetector' in window)) return;
-      const detector = new (window as any).BarcodeDetector({
-        formats: BARCODE_FORMATS as any,
-      });
+
+    const onReady = () => {
+      if (!('BarcodeDetector' in window)) {
+        setError('Escáner no disponible en este navegador');
+        return;
+      }
+      let detector: any;
+      try {
+        detector = new (window as any).BarcodeDetector({
+          formats: BARCODE_FORMATS as any,
+        });
+      } catch {
+        setError('Error al inicializar escáner');
+        return;
+      }
       let running = true;
-      const detect = async () => {
+      timerRef.current = setInterval(async () => {
         if (!running || !video) return;
         try {
           const codes = await detector.detect(video);
@@ -59,21 +69,26 @@ export default function VinScanner({ onScan }: VinScannerProps) {
               running = false;
               onScan(text);
               stopScanning();
-              return;
             }
           }
         } catch {}
-        rafRef.current = requestAnimationFrame(detect);
-      };
-      detect();
+      }, 300);
       return () => { running = false; };
-    }).catch(() => {
-      setError('Error al reproducir video');
-    });
+    };
+
+    // Wait for video metadata + canplay before scanning
+    const onCanPlay = () => {
+      video.removeEventListener('loadedmetadata', onReady);
+      video.removeEventListener('canplay', onCanPlay);
+      onReady();
+    };
+    video.addEventListener('loadedmetadata', onReady, { once: true });
+    video.addEventListener('canplay', onCanPlay, { once: true });
+    video.play().catch(() => setError('Error al reproducir video'));
   }, [scanning, onScan]);
 
   const stopScanning = useCallback(() => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
