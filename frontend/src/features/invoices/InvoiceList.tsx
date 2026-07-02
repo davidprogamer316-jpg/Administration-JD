@@ -4,7 +4,7 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { api } from '@/lib/api';
 import { downloadFromApi } from '@/lib/download';
 import type { CarJob, Invoice } from '@/types';
-import { Plus, FileDown, Trash2 } from 'lucide-react';
+import { Plus, FileDown, Trash2, Eye } from 'lucide-react';
 import Modal from '@/components/Modal';
 
 function formatDate(dateStr: string) {
@@ -303,8 +303,20 @@ export default function InvoiceList() {
                     <div className="flex items-center justify-end gap-1">
                       <button
                         onClick={() =>
+                          window.open(
+                            `${process.env.NEXT_PUBLIC_API_URL}/invoices/${inv._id}/pdf`,
+                            '_blank'
+                          )
+                        }
+                        className="p-1.5 text-text-muted hover:text-accent transition-colors"
+                        title="Ver factura"
+                      >
+                        <Eye size={16} />
+                      </button>
+                      <button
+                        onClick={() =>
                           downloadFromApi(
-                            `/invoices/${inv._id}/pdf`,
+                            `/invoices/${inv._id}/pdf?download=true`,
                             `factura-${inv.invoiceNumber}.pdf`
                           )
                         }
@@ -370,18 +382,32 @@ export default function InvoiceList() {
                 {formatMoney(detailInvoice.total)}
               </span>
             </div>
-            <button
-              onClick={() => {
-                downloadFromApi(
-                  `/invoices/${detailInvoice._id}/pdf`,
-                  `factura-${detailInvoice.invoiceNumber}.pdf`
-                );
-              }}
-              className="w-full mt-2 flex items-center justify-center gap-2 rounded-lg bg-accent text-white px-4 py-2.5 text-sm font-medium hover:bg-accent/90 transition-colors"
-            >
-              <FileDown size={16} />
-              Descargar PDF
-            </button>
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={() => {
+                  window.open(
+                    `${process.env.NEXT_PUBLIC_API_URL}/invoices/${detailInvoice._id}/pdf`,
+                    '_blank'
+                  );
+                }}
+                className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-accent text-accent px-4 py-2.5 text-sm font-medium hover:bg-accent/5 transition-colors"
+              >
+                <Eye size={16} />
+                Ver factura
+              </button>
+              <button
+                onClick={() => {
+                  downloadFromApi(
+                    `/invoices/${detailInvoice._id}/pdf?download=true`,
+                    `factura-${detailInvoice.invoiceNumber}.pdf`
+                  );
+                }}
+                className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-accent text-white px-4 py-2.5 text-sm font-medium hover:bg-accent/90 transition-colors"
+              >
+                <FileDown size={16} />
+                Descargar
+              </button>
+            </div>
           </div>
         )}
       </Modal>

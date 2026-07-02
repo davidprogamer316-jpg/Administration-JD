@@ -68,10 +68,13 @@ export async function downloadPdf(
 ) {
   try {
     const buffer = await invoiceService.generatePdf(req.params.id as string);
+    const isDownload = req.query.download === 'true';
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename=factura-${req.params.id}.pdf`
+      isDownload
+        ? `attachment; filename=factura-${req.params.id}.pdf`
+        : `inline; filename=factura-${req.params.id}.pdf`
     );
     res.send(buffer);
   } catch (err: any) {
