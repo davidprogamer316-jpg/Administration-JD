@@ -57,7 +57,7 @@ export async function getById(id: string) {
 
 export async function create(data: {
   clientName: string;
-  items: Array<{ description: string; amount: number; carJobId?: string; paperTypes?: string[] }>;
+  items: Array<{ description: string; amount: number; carJobId?: string; paperTypes?: string[]; date?: string }>;
   notes?: string;
 }) {
   const count = await Invoice.countDocuments();
@@ -132,6 +132,9 @@ export async function generatePdf(id: string): Promise<Buffer> {
   for (const item of invoice.items) {
     const itemH = Math.max(18, textH(item.description, DESC_W, 10) + 4);
     let paperH = 0;
+    if (item.date) {
+      paperH += textH(`Date: ${item.date}`, CONTENT_W, 7) + 1;
+    }
     if (item.paperTypes && item.paperTypes.length > 0) {
       for (const pt of item.paperTypes) {
         const info = PAPER_INFO[pt];
@@ -236,12 +239,20 @@ export async function generatePdf(id: string): Promise<Buffer> {
     for (const item of invoice.items) {
       doc.fontSize(10).font('Helvetica').fillColor('#000');
       const descH = doc.heightOfString(item.description, { width: DESC_W });
-      const rowH = Math.max(18, descH + 4);
+      let rowH = Math.max(18, descH + 4);
 
       doc.text(item.description, LEFT, y + 2, { width: DESC_W });
       doc.text(formatMoney(item.amount), PRICE_X, y + 2, { width: PRICE_W, align: 'right' });
 
       y += rowH;
+
+      if (item.date) {
+        doc.fontSize(7).font('Helvetica-Oblique').fillColor('#666');
+        const dateText = `Date: ${formatDate(new Date(item.date))}`;
+        const dateH = doc.heightOfString(dateText, { width: CONTENT_W });
+        doc.text(dateText, LEFT, y, { width: CONTENT_W });
+        y += dateH + 1;
+      }
 
       if (item.paperTypes && item.paperTypes.length > 0) {
         doc.fontSize(7).font('Helvetica-Oblique').fillColor('#666');

@@ -87,6 +87,7 @@ export default function InvoiceList() {
         amount: j.payment,
         carJobId: j._id,
         paperTypes: j.paperTypes || [],
+        date: j.date,
       }));
 
     try {

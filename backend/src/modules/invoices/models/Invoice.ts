@@ -5,6 +5,7 @@ export interface IInvoiceItem {
   amount: number;
   carJobId?: string;
   paperTypes?: string[];
+  date?: string;
 }
 
 export interface IInvoice extends Document {
@@ -22,6 +23,7 @@ const InvoiceItemSchema = new Schema<IInvoiceItem>(
     amount: { type: Number, required: true, min: 0 },
     carJobId: { type: String },
     paperTypes: { type: [String], default: [] },
+    date: { type: String },
   },
   { _id: false }
 );

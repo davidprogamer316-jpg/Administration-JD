@@ -68,6 +68,7 @@ export interface InvoiceItem {
   amount: number;
   carJobId?: string;
   paperTypes?: string[];
+  date?: string;
 }
 
 export interface Invoice {

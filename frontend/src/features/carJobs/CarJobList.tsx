@@ -147,6 +147,7 @@ export default function CarJobList() {
             amount: detailJob.payment,
             carJobId: detailJob._id,
             paperTypes: detailJob.paperTypes || [],
+            date: detailJob.date,
           },
         ],
       });
