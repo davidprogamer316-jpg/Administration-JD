@@ -14,6 +14,7 @@ const COMPANY_PHONE = '786 793 4440';
 const COMPANY_URL = 'https://tinting-film.com';
 
 const LOGO_PATH = path.join(__dirname, '../../../../assets/logo.PNG');
+const WATERMARK_PATH = path.join(__dirname, '../../../../assets/marca_agua.png');
 const QR_SIZE = 72;
 
 const PAPER_INFO: Record<string, { label: string; specs: string }> = {
@@ -117,7 +118,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
 
   let pageH = MARGIN;
   // Logo area
-  pageH += 56;
+  pageH += 76;
   // Company header (name + tagline + phone)
   pageH += 18 + 2 + textH(COMPANY_TAGLINE, CONTENT_W, 8) + 4 + textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 9);
   // Separator
@@ -179,10 +180,18 @@ export async function generatePdf(id: string): Promise<Buffer> {
 
     let y = MARGIN;
 
+    // ── Watermark ──
+    if (fs.existsSync(WATERMARK_PATH)) {
+      doc.save();
+      doc.opacity(0.1);
+      doc.image(WATERMARK_PATH, (PAGE_W - 180) / 2, (pageH - 180) / 2, { width: 180 });
+      doc.restore();
+    }
+
     // ── Logo ──
     if (fs.existsSync(LOGO_PATH)) {
-      doc.image(LOGO_PATH, (PAGE_W - 50) / 2, y, { width: 50 });
-      y += 50;
+      doc.image(LOGO_PATH, (PAGE_W - 70) / 2, y, { width: 70 });
+      y += 70;
     }
 
     // ── Company header (centred) ──
