@@ -61,23 +61,6 @@ export async function remove(
   }
 }
 
-export async function employeeEarnings(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-  try {
-    const data = await invoiceService.getEmployeeEarnings(req.params.id as string);
-    res.json(data);
-  } catch (err: any) {
-    if (err.status === 404) {
-      res.status(404).json({ message: err.message });
-      return;
-    }
-    next(err);
-  }
-}
-
 export async function downloadPdf(
   req: Request,
   res: Response,

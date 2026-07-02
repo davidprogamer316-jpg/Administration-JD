@@ -3,8 +3,6 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import QRCode from 'qrcode';
-import { CarJob } from '../../carJobs/models/index.js';
-import { AccountingPeriod } from '../../accounting/models/index.js';
 import { Invoice } from '../models/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -84,49 +82,6 @@ export async function remove(id: string) {
     throw Object.assign(new Error('Factura no encontrada'), { status: 404 });
   }
   return { message: 'Factura eliminada' };
-}
-
-export interface EmployeeEarning {
-  employeeName: string;
-  percentageApplied: number;
-  amount: number;
-  jobDescription: string;
-  jobPayment: number;
-}
-
-export async function getEmployeeEarnings(invoiceId: string): Promise<EmployeeEarning[]> {
-  const invoice = await Invoice.findById(invoiceId);
-  if (!invoice) {
-    throw Object.assign(new Error('Factura no encontrada'), { status: 404 });
-  }
-
-  const results: EmployeeEarning[] = [];
-
-  for (const item of invoice.items) {
-    if (!item.carJobId) continue;
-
-    const job = await CarJob.findById(item.carJobId);
-    if (!job) continue;
-
-    const period = await AccountingPeriod.findOne({
-      periodStartDate: { $lte: job.date },
-      periodEndDate: { $gte: job.date },
-    });
-    if (!period || period.income <= 0) continue;
-
-    for (const share of period.employeeDistribution) {
-      const proportionalAmount = share.amount * (job.payment / period.income);
-      results.push({
-        employeeName: share.employeeName,
-        percentageApplied: share.percentageApplied,
-        amount: Math.round(proportionalAmount * 100) / 100,
-        jobDescription: job.description,
-        jobPayment: job.payment,
-      });
-    }
-  }
-
-  return results;
 }
 
 export async function generatePdf(id: string): Promise<Buffer> {

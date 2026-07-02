@@ -7,14 +7,6 @@ import type { CarJob, Invoice } from '@/types';
 import { Plus, FileDown, Trash2 } from 'lucide-react';
 import Modal from '@/components/Modal';
 
-interface EmployeeEarning {
-  employeeName: string;
-  percentageApplied: number;
-  amount: number;
-  jobDescription: string;
-  jobPayment: number;
-}
-
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('es-ES', {
     day: '2-digit',
@@ -33,8 +25,6 @@ export default function InvoiceList() {
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState('');
   const [detailInvoice, setDetailInvoice] = useState<Invoice | null>(null);
-  const [earnings, setEarnings] = useState<EmployeeEarning[]>([]);
-  const [loadingEarnings, setLoadingEarnings] = useState(false);
 
   const [clientName, setClientName] = useState('');
   const [carJobs, setCarJobs] = useState<CarJob[]>([]);
@@ -65,15 +55,6 @@ export default function InvoiceList() {
         .finally(() => setLoadingJobs(false));
     }
   }, [showForm]);
-
-  useEffect(() => {
-    if (!detailInvoice) { setEarnings([]); return; }
-    setLoadingEarnings(true);
-    api.get<EmployeeEarning[]>(`/invoices/${detailInvoice._id}/employee-earnings`)
-      .then(setEarnings)
-      .catch(() => {})
-      .finally(() => setLoadingEarnings(false));
-  }, [detailInvoice]);
 
   function resetForm() {
     setClientName('');
@@ -348,7 +329,7 @@ export default function InvoiceList() {
 
       <Modal
         open={!!detailInvoice}
-        onClose={() => { setDetailInvoice(null); setEarnings([]); }}
+        onClose={() => setDetailInvoice(null)}
         title={`Factura ${detailInvoice?.invoiceNumber || ''}`}
       >
         {detailInvoice && (
@@ -387,41 +368,6 @@ export default function InvoiceList() {
                 {formatMoney(detailInvoice.total)}
               </span>
             </div>
-
-            {(loadingEarnings || earnings.length > 0) && (
-              <div className="pt-3 border-t border-border">
-                <p className="text-text-muted text-xs uppercase tracking-wider mb-2">
-                  Ganancias empleados
-                </p>
-                {loadingEarnings ? (
-                  <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto" />
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-border">
-                          <th className="text-left pr-2 py-1.5 text-text-muted font-medium">Empleado</th>
-                          <th className="text-left pr-2 py-1.5 text-text-muted font-medium">Trabajo</th>
-                          <th className="text-right pr-2 py-1.5 text-text-muted font-medium">%</th>
-                          <th className="text-right py-1.5 text-text-muted font-medium">Ganancia</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {earnings.map((e, i) => (
-                          <tr key={i} className="border-b border-border last:border-0">
-                            <td className="pr-2 py-1.5 text-text-body">{e.employeeName}</td>
-                            <td className="pr-2 py-1.5 text-text-muted max-w-[120px] truncate">{e.jobDescription}</td>
-                            <td className="pr-2 py-1.5 text-text-body text-right">{e.percentageApplied}%</td>
-                            <td className="py-1.5 text-text-body text-right font-medium">{formatMoney(e.amount)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )}
-
             <button
               onClick={() => {
                 downloadFromApi(
