@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Camera, X, CameraIcon } from 'lucide-react';
+import { Camera, X } from 'lucide-react';
 
 interface VinScannerProps {
   onScan: (vin: string) => void;
@@ -141,7 +141,7 @@ export default function VinScanner({ onScan }: VinScannerProps) {
               {processing ? (
                 <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
               ) : (
-                <CameraIcon size={20} />
+                <Camera size={20} />
               )}
               {processing ? 'Procesando...' : 'Tomar foto'}
             </button>
