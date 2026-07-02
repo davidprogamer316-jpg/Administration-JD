@@ -1,4 +1,4 @@
-import { AccountingPeriod, IAccountingPeriod } from '../models/index.js';
+import { AccountingPeriod, FixedExpense, IAccountingPeriod } from '../models/index.js';
 import { CarJob } from '../../carJobs/models/index.js';
 import { env } from '../../../config/env.js';
 
@@ -8,10 +8,16 @@ async function recalculate(period: IAccountingPeriod) {
   });
   period.income = jobs.reduce((sum, j) => sum + j.payment, 0);
 
-  period.expenses = period.expenseItems.reduce(
-    (sum, item) => sum + item.amount,
-    0
-  );
+  // Auto-compute fixed expense halves
+  const fixedExpenses = await FixedExpense.find();
+  period.fixedExpenses = fixedExpenses.map((fe) => ({
+    name: fe.name,
+    amount: Math.round((fe.amount / 2) * 100) / 100,
+  }));
+
+  const fixedTotal = period.fixedExpenses.reduce((sum, fe) => sum + fe.amount, 0);
+  period.expenses =
+    period.expenseItems.reduce((sum, item) => sum + item.amount, 0) + fixedTotal;
 
   period.dddg = Math.max(0, period.income - period.expenses);
 

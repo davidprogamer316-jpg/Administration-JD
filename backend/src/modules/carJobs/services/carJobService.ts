@@ -19,6 +19,7 @@ async function ensureAccountingPeriod(date: Date) {
       income: 0,
       expenseItems: [],
       expenses: 0,
+      fixedExpenses: [],
       dddg: 0,
       companyProfit: 0,
       netToDistribute: 0,

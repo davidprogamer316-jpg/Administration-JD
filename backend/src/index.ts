@@ -6,6 +6,7 @@ import authRoutes from './modules/auth/routes/authRoutes.js';
 import employeeRoutes from './modules/employees/routes/employeeRoutes.js';
 import carJobRoutes from './modules/carJobs/routes/carJobRoutes.js';
 import accountingRoutes from './modules/accounting/routes/accountingRoutes.js';
+import fixedExpenseRoutes from './modules/accounting/routes/fixedExpenseRoutes.js';
 import invoiceRoutes from './modules/invoices/routes/invoiceRoutes.js';
 import { errorHandler } from './shared/middleware/errorHandler.js';
 
@@ -35,6 +36,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/car-jobs', carJobRoutes);
 app.use('/api/accounting', accountingRoutes);
+app.use('/api/fixed-expenses', fixedExpenseRoutes);
 app.use('/api/invoices', invoiceRoutes);
 
 app.use(errorHandler);

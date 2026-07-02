@@ -18,6 +18,11 @@ export interface EmployeeShare {
   amount: number;
 }
 
+export interface FixedExpenseItem {
+  name: string;
+  amount: number;
+}
+
 export interface AccountingPeriod {
   _id: string;
   periodStartDate: string;
@@ -26,6 +31,7 @@ export interface AccountingPeriod {
   income: number;
   expenseItems: ExpenseItem[];
   expenses: number;
+  fixedExpenses: FixedExpenseItem[];
   dddg: number;
   companyProfit: number;
   netToDistribute: number;

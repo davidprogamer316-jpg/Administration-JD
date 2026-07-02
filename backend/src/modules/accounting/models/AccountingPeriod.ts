@@ -6,6 +6,11 @@ export interface IExpenseItem {
   amount: number;
 }
 
+export interface IFixedExpenseItem {
+  name: string;
+  amount: number;
+}
+
 export interface IEmployeeShare {
   employeeId: string;
   employeeName: string;
@@ -20,6 +25,7 @@ export interface IAccountingPeriod extends Document {
   income: number;
   expenseItems: IExpenseItem[];
   expenses: number;
+  fixedExpenses: IFixedExpenseItem[];
   dddg: number;
   companyProfit: number;
   netToDistribute: number;
@@ -34,6 +40,14 @@ const ExpenseItemSchema = new Schema<IExpenseItem>(
     amount: { type: Number, required: true, min: 0 },
   },
   { _id: true }
+);
+
+const FixedExpenseItemSchema = new Schema<IFixedExpenseItem>(
+  {
+    name: { type: String, required: true, trim: true },
+    amount: { type: Number, required: true, min: 0 },
+  },
+  { _id: false }
 );
 
 const EmployeeShareSchema = new Schema<IEmployeeShare>(
@@ -54,6 +68,7 @@ const AccountingPeriodSchema = new Schema<IAccountingPeriod>(
     income: { type: Number, required: true, default: 0 },
     expenseItems: { type: [ExpenseItemSchema], default: [] },
     expenses: { type: Number, default: 0 },
+    fixedExpenses: { type: [FixedExpenseItemSchema], default: [] },
     dddg: { type: Number, default: 0 },
     companyProfit: { type: Number, default: 0 },
     netToDistribute: { type: Number, default: 0 },

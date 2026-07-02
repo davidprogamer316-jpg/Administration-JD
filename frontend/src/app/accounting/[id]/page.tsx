@@ -185,6 +185,20 @@ export default function AccountingDetailPage() {
               <h2 className="text-lg font-heading font-semibold text-text-body mb-4">
                 Gastos del periodo
               </h2>
+              {period.fixedExpenses.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-2">Gastos fijos automáticos</p>
+                  <div className="space-y-1">
+                    {period.fixedExpenses.map((fe, idx) => (
+                      <div key={idx} className="flex items-center justify-between text-sm text-text-body">
+                        <span>{fe.name}</span>
+                        <span className="font-medium">{formatMoney(fe.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <hr className="my-3 border-border" />
+                </div>
+              )}
               <ExpenseEditor period={period} onUpdate={load} />
             </section>
           </div>
