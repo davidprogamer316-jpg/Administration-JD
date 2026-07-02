@@ -25,7 +25,7 @@ export async function create(req: Request, res: Response, next: NextFunction) {
 
 export async function update(req: Request, res: Response, next: NextFunction) {
   try {
-    const expense = await fixedExpenseService.update(req.params.id, req.body);
+    const expense = await fixedExpenseService.update(req.params.id as string, req.body);
     res.json(expense);
   } catch (err: any) {
     if (err.status === 404) {
@@ -38,7 +38,7 @@ export async function update(req: Request, res: Response, next: NextFunction) {
 
 export async function remove(req: Request, res: Response, next: NextFunction) {
   try {
-    const result = await fixedExpenseService.remove(req.params.id);
+    const result = await fixedExpenseService.remove(req.params.id as string);
     res.json(result);
   } catch (err: any) {
     if (err.status === 404) {
