@@ -126,10 +126,18 @@ export default function VinScanner({ onScan }: VinScannerProps) {
       if (!nativeOk) startHtml5Fallback();
     };
 
-    // Check if metadata already loaded (common on iOS)
-    if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
+    const onPlaying = () => {
+      video.removeEventListener('playing', onPlaying);
+      // Wait a tiny bit for the first frame to be drawn
+      requestAnimationFrame(() => startScanning());
+    };
+
+    // Check if already playing
+    if (!video.paused && video.currentTime > 0) {
       startScanning();
     } else {
+      video.addEventListener('playing', onPlaying, { once: true });
+      // Fallback: if playing never fires, try after loadedmetadata
       video.addEventListener('loadedmetadata', startScanning, { once: true });
     }
     video.play().catch(() => setError('Error al reproducir video'));
