@@ -102,14 +102,12 @@ export default function DashboardView() {
         <DateInput
           value={startDate}
           onChange={(e) => setStartDate(e.target.value)}
-          placeholder="Fecha inicio"
           className="rounded-lg border border-border bg-bg-page px-3.5 py-2 text-sm outline-none focus:ring-2 focus:ring-accent/40 transition-colors w-full sm:w-auto"
         />
         <span className="text-text-muted text-sm">a</span>
         <DateInput
           value={endDate}
           onChange={(e) => setEndDate(e.target.value)}
-          placeholder="Fecha fin"
           className="rounded-lg border border-border bg-bg-page px-3.5 py-2 text-sm outline-none focus:ring-2 focus:ring-accent/40 transition-colors w-full sm:w-auto"
         />
         <button
