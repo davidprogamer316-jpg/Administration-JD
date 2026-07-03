@@ -1,6 +1,7 @@
 import PDFDocument from 'pdfkit';
 import path from 'path';
 import fs from 'fs';
+import sharp from 'sharp';
 import { fileURLToPath } from 'url';
 import QRCode from 'qrcode';
 import { Invoice } from '../models/index.js';
@@ -117,7 +118,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
 
   let pageH = MARGIN;
   // Logo area
-  pageH += 106;
+  pageH += 206;
   // Company header (name + tagline + phone)
   pageH += 18 + 2 + textH(COMPANY_TAGLINE, CONTENT_W, 8) + 4 + textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 9);
   // Separator
@@ -173,16 +174,23 @@ export async function generatePdf(id: string): Promise<Buffer> {
   const chunks: Buffer[] = [];
   doc.on('data', (chunk) => chunks.push(chunk));
 
+  // Pre-process logo to grayscale
+  let logoBuffer: Buffer | null = null;
+  if (fs.existsSync(LOGO_PATH)) {
+    const imgBuf = fs.readFileSync(LOGO_PATH);
+    logoBuffer = await sharp(imgBuf).grayscale().toBuffer();
+  }
+
   return new Promise((resolve, reject) => {
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
     let y = MARGIN;
 
-    // ── Logo ──
-    if (fs.existsSync(LOGO_PATH)) {
-      doc.image(LOGO_PATH, (PAGE_W - 100) / 2, y, { width: 100 });
-      y += 100;
+    // ── Logo (grayscale) ──
+    if (logoBuffer) {
+      doc.image(logoBuffer, (PAGE_W - 200) / 2, y, { width: 200 });
+      y += 200;
     }
 
     // ── Company header (centred) ──
@@ -190,11 +198,11 @@ export async function generatePdf(id: string): Promise<Buffer> {
     doc.text(COMPANY_NAME, LEFT, y, { align: 'center', width: CONTENT_W });
     y += 18;
 
-    doc.fontSize(8).font('Helvetica-Oblique').fillColor('#666');
+    doc.fontSize(8).font('Helvetica-Oblique').fillColor('#333');
     doc.text(COMPANY_TAGLINE, LEFT, y, { align: 'center', width: CONTENT_W });
     y += textH(COMPANY_TAGLINE, CONTENT_W, 8) + 4;
 
-    doc.fontSize(9).font('Helvetica').fillColor('#444');
+    doc.fontSize(9).font('Helvetica').fillColor('#222');
     doc.text(`Tel: ${COMPANY_PHONE}`, LEFT, y, { align: 'center', width: CONTENT_W });
     y += textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 9) + 2;
 
@@ -208,11 +216,11 @@ export async function generatePdf(id: string): Promise<Buffer> {
     doc.text('INVOICE', LEFT, y, { align: 'center', width: CONTENT_W });
     y += 16;
 
-    doc.fontSize(16).font('Helvetica-Bold').fillColor('#D4A84B');
+    doc.fontSize(16).font('Helvetica-Bold').fillColor('#A07D30');
     doc.text(invoice.invoiceNumber, LEFT, y, { align: 'center', width: CONTENT_W });
     y += 22;
 
-    doc.fontSize(9).font('Helvetica').fillColor('#666');
+    doc.fontSize(9).font('Helvetica').fillColor('#333');
     doc.text(`Date: ${formatDate(invoice.date)}`, LEFT, y, { align: 'center', width: CONTENT_W });
     y += 14;
 
@@ -221,7 +229,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     y += 8;
 
     // ── Client ──
-    doc.fontSize(8).font('Helvetica-Bold').fillColor('#666');
+    doc.fontSize(8).font('Helvetica-Bold').fillColor('#333');
     doc.text('CUSTOMER', LEFT, y);
     y += 12;
 
@@ -251,7 +259,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
       y += rowH;
 
       if (item.date) {
-        doc.fontSize(7).font('Helvetica-Oblique').fillColor('#666');
+        doc.fontSize(7).font('Helvetica-Oblique').fillColor('#333');
         const dateText = `Date: ${formatDate(new Date(item.date))}`;
         const dateH = doc.heightOfString(dateText, { width: CONTENT_W });
         doc.text(dateText, LEFT, y, { width: CONTENT_W });
@@ -259,7 +267,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
       }
 
       if (item.paperTypes && item.paperTypes.length > 0) {
-        doc.fontSize(7).font('Helvetica-Oblique').fillColor('#666');
+        doc.fontSize(7).font('Helvetica-Oblique').fillColor('#333');
         for (const pt of item.paperTypes) {
           const info = PAPER_INFO[pt];
           if (!info) continue;
@@ -286,7 +294,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     y += 8;
 
     // ── Warranty text (centred) ──
-    doc.fontSize(8).font('Helvetica-Oblique').fillColor('#666');
+    doc.fontSize(8).font('Helvetica-Oblique').fillColor('#333');
     const warrantyText =
       'Warranty applies per the specifications listed above for each ' +
       'installed film type. This document certifies the completion of the ' +
@@ -295,7 +303,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     y += doc.heightOfString(warrantyText, { width: CONTENT_W }) + 4;
 
     // ── Footer ──
-    doc.fontSize(7).font('Helvetica').fillColor('#999');
+    doc.fontSize(7).font('Helvetica').fillColor('#555');
     const footerText = `Generated on ${formatDate(new Date())} by ${COMPANY_NAME}.`;
     doc.text(footerText, LEFT, y, { align: 'center', width: CONTENT_W });
     y += doc.heightOfString(footerText, { width: CONTENT_W }) + 8;
