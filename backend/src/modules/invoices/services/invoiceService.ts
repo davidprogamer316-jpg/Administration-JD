@@ -95,16 +95,17 @@ export async function generatePdf(id: string): Promise<Buffer> {
     throw Object.assign(new Error('Factura no encontrada'), { status: 404 });
   }
 
-  // ── Layout constants (80 mm × 210 mm thermal‑receipt) ──
-  // 80mm = 227pt, so the PDF matches actual paper size — no scaling needed
-  const PAGE_W = 227;
-  const MARGIN = 5;
+  // ── Layout constants for 80 mm thermal paper ──
+  // At 90% scale the user confirmed 204pt (72mm) fits in the printable area.
+  // We use 204pt directly so the print dialog can use "Actual size" at 100%.
+  const PAGE_W = 204;
+  const MARGIN = 4;
   const CONTENT_W = PAGE_W - MARGIN * 2;
   const LEFT = MARGIN;
   const RIGHT = PAGE_W - MARGIN;
 
   // Column split for items
-  const PRICE_W = 70;
+  const PRICE_W = 60;
   const DESC_W = CONTENT_W - PRICE_W;
   const PRICE_X = LEFT + DESC_W;
 
@@ -208,8 +209,8 @@ export async function generatePdf(id: string): Promise<Buffer> {
 
     // ── Logo (grayscale) ──
     if (logoBuffer) {
-      doc.image(logoBuffer, (PAGE_W - 200) / 2, y, { width: 200 });
-      y += 200;
+      doc.image(logoBuffer, (PAGE_W - 160) / 2, y, { width: 160 });
+      y += 160;
     }
 
     // ── Company header (centred) ──
