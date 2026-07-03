@@ -122,13 +122,13 @@ export async function generatePdf(id: string): Promise<Buffer> {
   // Logo area
   pageH += 166;
   // Company header (name + tagline + phone)
-  pageH += 22 + 2 + textH(COMPANY_TAGLINE, CONTENT_W, 10) + 4 + textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 10);
-  // Separator
-  pageH += 14;
+  pageH += 16 + textH(COMPANY_TAGLINE, CONTENT_W, 10) + textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 10);
+  // Thin divider
+  pageH += 4;
   // Invoice title + number + date
-  pageH += 18 + 4 + 22 + 4 + textH(`Fecha: ${formatDate(invoice.date)}`, CONTENT_W, 10);
-  // Separator
-  pageH += 14;
+  pageH += 14 + 4 + 16 + 4 + textH(`Fecha: ${formatDate(invoice.date)}`, CONTENT_W, 10);
+  // Thin divider
+  pageH += 12;
   // Client
   pageH += 12 + 2 + textH(invoice.clientName, CONTENT_W, 11) + 2;
   // Separator
@@ -208,33 +208,33 @@ export async function generatePdf(id: string): Promise<Buffer> {
     // ── Company header (centred) ──
     doc.fontSize(18).font(FONT).fillColor('#000');
     doc.text(COMPANY_NAME, LEFT, y, { align: 'center', width: CONTENT_W });
-    y += 22;
+    y += 16;
 
     doc.fontSize(10).font(FONT).fillColor('#000');
     doc.text(COMPANY_TAGLINE, LEFT, y, { align: 'center', width: CONTENT_W });
-    y += textH(COMPANY_TAGLINE, CONTENT_W, 10) + 4;
+    y += textH(COMPANY_TAGLINE, CONTENT_W, 10);
 
     doc.fontSize(10).font(FONT).fillColor('#000');
     doc.text(`Tel: ${COMPANY_PHONE}`, LEFT, y, { align: 'center', width: CONTENT_W });
-    y += textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 10) + 2;
+    y += textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 10);
 
-    // ── Divider ──
-    y += 2;
+    // ── Thin divider ──
+    y += 1;
     doc.moveTo(LEFT, y).lineTo(RIGHT, y).strokeColor('#000').lineWidth(0.5).stroke();
-    y += 8;
+    y += 3;
 
     // ── Invoice title + number + date ──
     doc.fontSize(16).font(FONT).fillColor('#000');
     doc.text('INVOICE', LEFT, y, { align: 'center', width: CONTENT_W });
-    y += 18;
+    y += 14;
 
     doc.fontSize(16).font(FONT).fillColor('#000');
     doc.text(invoice.invoiceNumber, LEFT, y, { align: 'center', width: CONTENT_W });
-    y += 22;
+    y += 16;
 
     doc.fontSize(10).font(FONT).fillColor('#000');
     doc.text(`Date: ${formatDate(invoice.date)}`, LEFT, y, { align: 'center', width: CONTENT_W });
-    y += 14;
+    y += 10;
 
     // ── Divider ──
     doc.moveTo(LEFT, y).lineTo(RIGHT, y).strokeColor('#000').lineWidth(0.5).stroke();
