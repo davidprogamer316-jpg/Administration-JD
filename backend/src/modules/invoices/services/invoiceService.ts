@@ -185,7 +185,6 @@ export async function generatePdf(id: string): Promise<Buffer> {
     doc.registerFont('CourierPrime-Bold', CP_BOLD);
   }
   const FONT = fs.existsSync(CP_REG) ? 'CourierPrime' : 'Courier';
-  const FONT_BOLD = fs.existsSync(CP_REG) ? 'CourierPrime-Bold' : 'Courier-Bold';
 
   // Pre-process logo to grayscale
   let logoBuffer: Buffer | null = null;
@@ -207,7 +206,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     }
 
     // ── Company header (centred) ──
-    doc.fontSize(18).font(FONT_BOLD).fillColor('#000');
+    doc.fontSize(18).font(FONT).fillColor('#000');
     doc.text(COMPANY_NAME, LEFT, y, { align: 'center', width: CONTENT_W });
     y += 22;
 
@@ -225,11 +224,11 @@ export async function generatePdf(id: string): Promise<Buffer> {
     y += 8;
 
     // ── Invoice title + number + date ──
-    doc.fontSize(16).font(FONT_BOLD).fillColor('#000');
+    doc.fontSize(16).font(FONT).fillColor('#000');
     doc.text('INVOICE', LEFT, y, { align: 'center', width: CONTENT_W });
     y += 18;
 
-    doc.fontSize(16).font(FONT_BOLD).fillColor('#000');
+    doc.fontSize(16).font(FONT).fillColor('#000');
     doc.text(invoice.invoiceNumber, LEFT, y, { align: 'center', width: CONTENT_W });
     y += 22;
 
@@ -242,7 +241,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     y += 8;
 
     // ── Client ──
-    doc.fontSize(10).font(FONT_BOLD).fillColor('#000');
+    doc.fontSize(10).font(FONT).fillColor('#000');
     doc.text('CUSTOMER', LEFT, y);
     y += 12;
 
@@ -255,7 +254,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     y += 8;
 
     // ── Table header ──
-    doc.fontSize(10).font(FONT_BOLD).fillColor('#000');
+    doc.fontSize(10).font(FONT).fillColor('#000');
     doc.text('SERVICE', LEFT, y, { width: DESC_W });
     doc.text('AMOUNT', PRICE_X, y, { width: PRICE_W, align: 'right' });
     y += 16;
@@ -297,7 +296,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     doc.moveTo(LEFT, y).lineTo(RIGHT, y).strokeColor('#000').lineWidth(1).stroke();
     y += 8;
 
-    doc.fontSize(14).font(FONT_BOLD).fillColor('#000');
+    doc.fontSize(14).font(FONT).fillColor('#000');
     doc.text('TOTAL', LEFT, y);
     doc.text(formatMoney(invoice.total), PRICE_X, y, { width: PRICE_W, align: 'right' });
     y += 24;
