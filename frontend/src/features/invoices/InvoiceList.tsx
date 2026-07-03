@@ -4,7 +4,7 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { api } from '@/lib/api';
 import { downloadFromApi } from '@/lib/download';
 import type { CarJob, Invoice } from '@/types';
-import { Plus, FileDown, Printer, Trash2, Eye, Search } from 'lucide-react';
+import { Plus, FileDown, Trash2, Eye, Search } from 'lucide-react';
 import Modal from '@/components/Modal';
 
 function formatDate(dateStr: string) {
@@ -349,18 +349,6 @@ export default function InvoiceList() {
                         <FileDown size={16} />
                       </button>
                       <button
-                        onClick={() =>
-                          downloadFromApi(
-                            `/invoices/${inv._id}/escpos`,
-                            `factura-${inv.invoiceNumber}.prn`
-                          )
-                        }
-                        className="p-1.5 text-text-muted hover:text-accent transition-colors"
-                        title="Descargar ESC/POS (.prn)"
-                      >
-                        <Printer size={16} />
-                      </button>
-                      <button
                         onClick={() => handleDelete(inv)}
                         className="p-1.5 text-text-muted hover:text-danger transition-colors"
                         title="Eliminar"
@@ -442,18 +430,6 @@ export default function InvoiceList() {
               >
                 <FileDown size={16} />
                 Descargar
-              </button>
-              <button
-                onClick={() => {
-                  downloadFromApi(
-                    `/invoices/${detailInvoice._id}/escpos`,
-                    `factura-${detailInvoice.invoiceNumber}.prn`
-                  );
-                }}
-                className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-accent text-accent px-4 py-2.5 text-sm font-medium hover:bg-accent/5 transition-colors"
-              >
-                <Printer size={16} />
-                ESC/POS
               </button>
             </div>
           </div>
