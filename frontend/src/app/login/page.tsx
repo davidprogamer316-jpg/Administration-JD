@@ -8,11 +8,9 @@ import { ApiError } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, register, user } = useAuth();
-  const [isRegister, setIsRegister] = useState(false);
+  const { login, user } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [locked, setLocked] = useState(false);
@@ -30,11 +28,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      if (isRegister) {
-        await register(email, password, fullName);
-      } else {
-        await login(email, password);
-      }
+      await login(email, password);
       router.replace('/dashboard');
     } catch (err) {
       if (err instanceof ApiError) {
@@ -71,10 +65,10 @@ export default function LoginPage() {
             T
           </div>
           <h1 className="text-white text-xl font-heading font-semibold">
-            Tinting-JD ERP
+            Tinting-JD
           </h1>
           <p className="text-white/40 text-sm mt-1">
-            {isRegister ? 'Crear cuenta de administrador' : 'Iniciar sesión'}
+            Iniciar sesión
           </p>
         </div>
 
@@ -95,22 +89,6 @@ export default function LoginPage() {
           {error && !locked && (
             <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-red-400 text-sm">
               {error}
-            </div>
-          )}
-
-          {isRegister && (
-            <div>
-              <label className="block text-white/50 text-sm mb-1.5">
-                Nombre completo
-              </label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Tu nombre"
-                required
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/20 outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/50 transition-colors"
-              />
             </div>
           )}
 
@@ -168,42 +146,12 @@ export default function LoginPage() {
             disabled={loading}
             className="rounded-xl bg-accent text-brand font-semibold px-4 py-3 w-full hover:bg-accent/90 transition-colors active:scale-[0.98] disabled:opacity-50"
           >
-            {loading
-              ? 'Cargando...'
-              : isRegister
-                ? 'Crear cuenta'
-                : 'Iniciar sesión'}
+            {loading ? 'Cargando...' : 'Iniciar sesión'}
           </button>
-
-          <p className="text-center text-white/30 text-sm">
-            {isRegister ? (
-              <>
-                ¿Ya tienes cuenta?{' '}
-                <button
-                  type="button"
-                  onClick={() => setIsRegister(false)}
-                  className="text-accent hover:text-accent-light transition-colors"
-                >
-                  Inicia sesión
-                </button>
-              </>
-            ) : (
-              <>
-                ¿Primera vez?{' '}
-                <button
-                  type="button"
-                  onClick={() => setIsRegister(true)}
-                  className="text-accent hover:text-accent-light transition-colors"
-                >
-                  Crear cuenta
-                </button>
-              </>
-            )}
-          </p>
         </form>
 
         <p className="text-center text-white/20 text-xs mt-6">
-          &copy; {new Date().getFullYear()} Tinting-JD ERP
+          &copy; {new Date().getFullYear()} Tinting-JD
         </p>
       </div>
     </div>

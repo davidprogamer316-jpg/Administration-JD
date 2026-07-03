@@ -14,7 +14,7 @@ const bodyFont = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Tinting-JD ERP",
+  title: "Tinting-JD",
   description: "Sistema de gestión administrativa y financiera",
 };
 
