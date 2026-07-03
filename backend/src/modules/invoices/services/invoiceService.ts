@@ -170,29 +170,14 @@ export async function generatePdf(id: string): Promise<Buffer> {
   );
   // QR code
   pageH += 12 + QR_SIZE + 8;
-  pageH = Math.ceil(pageH * 1.25) + MARGIN;
+  pageH = Math.ceil(pageH * 1.4) + MARGIN;
 
   const doc = new PDFDocument({ size: [PAGE_W, pageH], margin: MARGIN });
   const chunks: Buffer[] = [];
   doc.on('data', (chunk) => chunks.push(chunk));
 
-  // ── Try to use system Arial Bold for thermal‑print clarity; fall back to Helvetica-Bold ──
-  let BOLD = 'Helvetica-Bold';
-  const arialBoldPaths = [
-    'C:\\Windows\\Fonts\\arialbd.ttf',
-    'C:\\Windows\\Fonts\\ARIALBD.TTF',
-    '/Library/Fonts/Arial Bold.ttf',
-    '/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf',
-  ];
-  for (const p of arialBoldPaths) {
-    if (fs.existsSync(p)) {
-      try {
-        doc.registerFont('Arial-Bold', p);
-        BOLD = 'Arial-Bold';
-      } catch { /* skip */ }
-      break;
-    }
-  }
+  // ── Use Courier‑Bold for optimal ESC/POS thermal font mapping (Font A: 12×24 dots) ──
+  let BOLD = 'Courier-Bold';
 
   // Pre-process logo to grayscale
   let logoBuffer: Buffer | null = null;
@@ -329,6 +314,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     y += doc.heightOfString(footerText, { width: CONTENT_W }) + 8;
 
     // ── QR code ──
+    y += 12;
     QRCode.toBuffer(COMPANY_URL, {
       type: 'png',
       width: QR_SIZE * 4,
