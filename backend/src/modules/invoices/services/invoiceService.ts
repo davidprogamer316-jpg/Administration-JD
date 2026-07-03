@@ -151,7 +151,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     const itemH = Math.max(20, textH(item.description, DESC_W, 11) + 4);
     let paperH = 0;
     if (item.date) {
-      paperH += textH(`Date: ${item.date}`, CONTENT_W, 10) + 1;
+      paperH += 2 + textH(`Date: ${item.date}`, CONTENT_W, 9) + 2;
     }
     if (item.paperTypes && item.paperTypes.length > 0) {
       for (const pt of item.paperTypes) {
@@ -209,7 +209,10 @@ export async function generatePdf(id: string): Promise<Buffer> {
       y += logoH;
     }
 
+    y += 5;
+
     // ── Company header (centred) ──
+    y += 5;
     doc.fontSize(18).font(FONT).fillColor('#000');
     doc.text(COMPANY_NAME, LEFT, y, { align: 'center', width: CONTENT_W });
     y += 16;
@@ -245,7 +248,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     y += 8;
 
     // ── Client ──
-    doc.fontSize(10).font(FONT).fillColor('#000');
+    doc.fontSize(11).font(FONT).fillColor('#000');
     doc.text('CUSTOMER', LEFT, y);
     y += 12;
 
@@ -258,7 +261,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     y += 8;
 
     // ── Table header ──
-    doc.fontSize(10).font(FONT).fillColor('#000');
+    doc.fontSize(11).font(FONT).fillColor('#000');
     doc.text('SERVICE', LEFT, y, { width: DESC_W });
     doc.text('AMOUNT', PRICE_X, y, { width: PRICE_W, align: 'right' });
     y += 16;
@@ -275,11 +278,12 @@ export async function generatePdf(id: string): Promise<Buffer> {
       y += rowH;
 
       if (item.date) {
-        doc.fontSize(10).font(FONT).fillColor('#000');
+        y += 2;
+        doc.fontSize(9).font(FONT).fillColor('#000');
         const dateText = `Date: ${formatDate(new Date(item.date))}`;
         const dateH = doc.heightOfString(dateText, { width: CONTENT_W });
         doc.text(dateText, LEFT, y, { width: CONTENT_W });
-        y += dateH + 1;
+        y += dateH + 2;
       }
 
       if (item.paperTypes && item.paperTypes.length > 0) {
