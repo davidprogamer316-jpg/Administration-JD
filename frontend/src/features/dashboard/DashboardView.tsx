@@ -53,10 +53,18 @@ function formatMoney(n: number) {
 const COLORS = ['#D4A84B', '#5B8C6B', '#B85C5C', '#2A2A45', '#8B7D8B'];
 
 export default function DashboardView() {
+  const today = new Date();
+  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState(
+    firstDay.toISOString().split('T')[0]
+  );
+  const [endDate, setEndDate] = useState(
+    lastDay.toISOString().split('T')[0]
+  );
 
   async function load() {
     setLoading(true);
