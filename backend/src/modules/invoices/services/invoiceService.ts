@@ -120,13 +120,13 @@ export async function generatePdf(id: string): Promise<Buffer> {
 
   let pageH = MARGIN;
   // Logo area
-  pageH += 206;
+  pageH += 166;
   // Company header (name + tagline + phone)
-  pageH += 18 + 2 + textH(COMPANY_TAGLINE, CONTENT_W, 9) + 4 + textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 9);
+  pageH += 22 + 2 + textH(COMPANY_TAGLINE, CONTENT_W, 10) + 4 + textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 10);
   // Separator
   pageH += 14;
   // Invoice title + number + date
-  pageH += 16 + 4 + 22 + 4 + textH(`Fecha: ${formatDate(invoice.date)}`, CONTENT_W, 9);
+  pageH += 18 + 4 + 22 + 4 + textH(`Fecha: ${formatDate(invoice.date)}`, CONTENT_W, 10);
   // Separator
   pageH += 14;
   // Client
@@ -137,16 +137,16 @@ export async function generatePdf(id: string): Promise<Buffer> {
   pageH += 18;
   // Items
   for (const item of invoice.items) {
-    const itemH = Math.max(18, textH(item.description, DESC_W, 10) + 4);
+    const itemH = Math.max(20, textH(item.description, DESC_W, 11) + 4);
     let paperH = 0;
     if (item.date) {
-      paperH += textH(`Date: ${item.date}`, CONTENT_W, 9) + 1;
+      paperH += textH(`Date: ${item.date}`, CONTENT_W, 10) + 1;
     }
     if (item.paperTypes && item.paperTypes.length > 0) {
       for (const pt of item.paperTypes) {
         const info = PAPER_INFO[pt];
         if (info) {
-          paperH += textH(`${info.label} — ${info.specs}`, CONTENT_W, 9) + 1;
+          paperH += textH(`${info.label} — ${info.specs}`, CONTENT_W, 10) + 1;
         }
       }
     }
@@ -161,12 +161,12 @@ export async function generatePdf(id: string): Promise<Buffer> {
     'Warranty applies per the specifications listed above for each ' +
     'installed film type. This document certifies the completion of the ' +
     'safety film installation service.',
-    CONTENT_W, 9
+    CONTENT_W, 10
   ) + 4;
   // Footer
   pageH += textH(
     `Generated on ${formatDate(new Date())} by ${COMPANY_NAME}.`,
-    CONTENT_W, 9
+    CONTENT_W, 10
   );
   // QR code
   pageH += 12 + QR_SIZE + 8;
@@ -176,7 +176,16 @@ export async function generatePdf(id: string): Promise<Buffer> {
   const chunks: Buffer[] = [];
   doc.on('data', (chunk) => chunks.push(chunk));
 
-  let FONT = 'Courier';
+  // ── Register Courier Prime (bundled TTF) ──
+  const FONT_DIR = path.join(__dirname, '../../../../assets/fonts');
+  const CP_REG = path.join(FONT_DIR, 'CourierPrime.ttf');
+  const CP_BOLD = path.join(FONT_DIR, 'CourierPrime-Bold.ttf');
+  if (fs.existsSync(CP_REG)) {
+    doc.registerFont('CourierPrime', CP_REG);
+    doc.registerFont('CourierPrime-Bold', CP_BOLD);
+  }
+  const FONT = fs.existsSync(CP_REG) ? 'CourierPrime' : 'Courier';
+  const FONT_BOLD = fs.existsSync(CP_REG) ? 'CourierPrime-Bold' : 'Courier-Bold';
 
   // Pre-process logo to grayscale
   let logoBuffer: Buffer | null = null;
@@ -198,17 +207,17 @@ export async function generatePdf(id: string): Promise<Buffer> {
     }
 
     // ── Company header (centred) ──
-    doc.fontSize(13).font(FONT).fillColor('#000');
+    doc.fontSize(18).font(FONT_BOLD).fillColor('#000');
     doc.text(COMPANY_NAME, LEFT, y, { align: 'center', width: CONTENT_W });
-    y += 18;
+    y += 22;
 
-    doc.fontSize(9).font(FONT).fillColor('#000');
+    doc.fontSize(10).font(FONT).fillColor('#000');
     doc.text(COMPANY_TAGLINE, LEFT, y, { align: 'center', width: CONTENT_W });
-    y += textH(COMPANY_TAGLINE, CONTENT_W, 9) + 4;
+    y += textH(COMPANY_TAGLINE, CONTENT_W, 10) + 4;
 
-    doc.fontSize(9).font(FONT).fillColor('#000');
+    doc.fontSize(10).font(FONT).fillColor('#000');
     doc.text(`Tel: ${COMPANY_PHONE}`, LEFT, y, { align: 'center', width: CONTENT_W });
-    y += textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 9) + 2;
+    y += textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 10) + 2;
 
     // ── Divider ──
     y += 2;
@@ -216,15 +225,15 @@ export async function generatePdf(id: string): Promise<Buffer> {
     y += 8;
 
     // ── Invoice title + number + date ──
-    doc.fontSize(11).font(FONT).fillColor('#000');
+    doc.fontSize(16).font(FONT_BOLD).fillColor('#000');
     doc.text('INVOICE', LEFT, y, { align: 'center', width: CONTENT_W });
-    y += 16;
+    y += 18;
 
-    doc.fontSize(16).font(FONT).fillColor('#000');
+    doc.fontSize(16).font(FONT_BOLD).fillColor('#000');
     doc.text(invoice.invoiceNumber, LEFT, y, { align: 'center', width: CONTENT_W });
     y += 22;
 
-    doc.fontSize(9).font(FONT).fillColor('#000');
+    doc.fontSize(10).font(FONT).fillColor('#000');
     doc.text(`Date: ${formatDate(invoice.date)}`, LEFT, y, { align: 'center', width: CONTENT_W });
     y += 14;
 
@@ -233,7 +242,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     y += 8;
 
     // ── Client ──
-    doc.fontSize(9).font(FONT).fillColor('#000');
+    doc.fontSize(10).font(FONT_BOLD).fillColor('#000');
     doc.text('CUSTOMER', LEFT, y);
     y += 12;
 
@@ -246,16 +255,16 @@ export async function generatePdf(id: string): Promise<Buffer> {
     y += 8;
 
     // ── Table header ──
-    doc.fontSize(9).font(FONT).fillColor('#000');
+    doc.fontSize(10).font(FONT_BOLD).fillColor('#000');
     doc.text('SERVICE', LEFT, y, { width: DESC_W });
     doc.text('AMOUNT', PRICE_X, y, { width: PRICE_W, align: 'right' });
     y += 16;
 
     // ── Table rows ──
     for (const item of invoice.items) {
-      doc.fontSize(10).font(FONT).fillColor('#000');
+      doc.fontSize(11).font(FONT).fillColor('#000');
       const descH = doc.heightOfString(item.description, { width: DESC_W });
-      let rowH = Math.max(18, descH + 4);
+      let rowH = Math.max(20, descH + 4);
 
       doc.text(item.description, LEFT, y + 2, { width: DESC_W });
       doc.text(formatMoney(item.amount), PRICE_X, y + 2, { width: PRICE_W, align: 'right' });
@@ -263,7 +272,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
       y += rowH;
 
       if (item.date) {
-        doc.fontSize(9).font(FONT).fillColor('#000');
+        doc.fontSize(10).font(FONT).fillColor('#000');
         const dateText = `Date: ${formatDate(new Date(item.date))}`;
         const dateH = doc.heightOfString(dateText, { width: CONTENT_W });
         doc.text(dateText, LEFT, y, { width: CONTENT_W });
@@ -271,7 +280,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
       }
 
       if (item.paperTypes && item.paperTypes.length > 0) {
-        doc.fontSize(9).font(FONT).fillColor('#000');
+        doc.fontSize(10).font(FONT).fillColor('#000');
         for (const pt of item.paperTypes) {
           const info = PAPER_INFO[pt];
           if (!info) continue;
@@ -288,7 +297,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     doc.moveTo(LEFT, y).lineTo(RIGHT, y).strokeColor('#000').lineWidth(1).stroke();
     y += 8;
 
-    doc.fontSize(14).font(FONT).fillColor('#000');
+    doc.fontSize(14).font(FONT_BOLD).fillColor('#000');
     doc.text('TOTAL', LEFT, y);
     doc.text(formatMoney(invoice.total), PRICE_X, y, { width: PRICE_W, align: 'right' });
     y += 24;
@@ -298,7 +307,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     y += 8;
 
     // ── Warranty text (centred) ──
-    doc.fontSize(9).font(FONT).fillColor('#000');
+    doc.fontSize(10).font(FONT).fillColor('#000');
     const warrantyText =
       'Warranty applies per the specifications listed above for each ' +
       'installed film type. This document certifies the completion of the ' +
@@ -307,7 +316,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     y += doc.heightOfString(warrantyText, { width: CONTENT_W }) + 4;
 
     // ── Footer ──
-    doc.fontSize(9).font(FONT).fillColor('#000');
+    doc.fontSize(10).font(FONT).fillColor('#000');
     const footerText = `Generated on ${formatDate(new Date())} by ${COMPANY_NAME}.`;
     doc.text(footerText, LEFT, y, { align: 'center', width: CONTENT_W });
     y += doc.heightOfString(footerText, { width: CONTENT_W }) + 8;
