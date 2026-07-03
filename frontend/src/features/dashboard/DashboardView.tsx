@@ -86,7 +86,7 @@ export default function DashboardView() {
 
   useEffect(() => {
     load();
-  }, [startDate, endDate]);
+  }, []);
 
   if (loading || !data) {
     return (
