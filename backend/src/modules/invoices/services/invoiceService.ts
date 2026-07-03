@@ -118,9 +118,20 @@ export async function generatePdf(id: string): Promise<Buffer> {
     return lines * fs * 1.35;
   }
 
+  // ── Pre-process logo — read dimensions first for page height calc ──
+  let logoBuffer: Buffer | null = null;
+  const LOGO_DISPLAY_W = 160;
+  let logoH = 0;
+  if (fs.existsSync(LOGO_PATH)) {
+    const imgBuf = fs.readFileSync(LOGO_PATH);
+    const meta = await sharp(imgBuf).metadata();
+    logoH = Math.round(LOGO_DISPLAY_W * meta.height! / meta.width!);
+    logoBuffer = await sharp(imgBuf).grayscale().toBuffer();
+  }
+
   let pageH = MARGIN;
   // Logo area
-  pageH += 166;
+  pageH += logoH || 0;
   // Company header (name + tagline + phone)
   pageH += 16 + textH(COMPANY_TAGLINE, CONTENT_W, 10) + textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 10);
   // Thin divider
@@ -186,23 +197,16 @@ export async function generatePdf(id: string): Promise<Buffer> {
   }
   const FONT = fs.existsSync(CP_REG) ? 'CourierPrime' : 'Courier';
 
-  // Pre-process logo to grayscale
-  let logoBuffer: Buffer | null = null;
-  if (fs.existsSync(LOGO_PATH)) {
-    const imgBuf = fs.readFileSync(LOGO_PATH);
-    logoBuffer = await sharp(imgBuf).grayscale().toBuffer();
-  }
-
   return new Promise((resolve, reject) => {
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    let y = MARGIN;
+    let y = 0;
 
     // ── Logo (grayscale) ──
     if (logoBuffer) {
-      doc.image(logoBuffer, (PAGE_W - 160) / 2, y, { width: 160 });
-      y += 160;
+      doc.image(logoBuffer, (PAGE_W - LOGO_DISPLAY_W) / 2, y, { width: LOGO_DISPLAY_W });
+      y += logoH;
     }
 
     // ── Company header (centred) ──
