@@ -95,9 +95,10 @@ export async function generatePdf(id: string): Promise<Buffer> {
     throw Object.assign(new Error('Factura no encontrada'), { status: 404 });
   }
 
-  // ── Layout constants (80 mm thermal‑receipt style) ──
+  // ── Layout constants (80 mm × 210 mm thermal‑receipt) ──
+  // 80mm = 227pt, so the PDF matches actual paper size — no scaling needed
   const PAGE_W = 227;
-  const MARGIN = 8;
+  const MARGIN = 5;
   const CONTENT_W = PAGE_W - MARGIN * 2;
   const LEFT = MARGIN;
   const RIGHT = PAGE_W - MARGIN;
@@ -174,6 +175,24 @@ export async function generatePdf(id: string): Promise<Buffer> {
   const chunks: Buffer[] = [];
   doc.on('data', (chunk) => chunks.push(chunk));
 
+  // ── Try to use system Arial Bold for thermal‑print clarity; fall back to Helvetica-Bold ──
+  let BOLD = 'Helvetica-Bold';
+  const arialBoldPaths = [
+    'C:\\Windows\\Fonts\\arialbd.ttf',
+    'C:\\Windows\\Fonts\\ARIALBD.TTF',
+    '/Library/Fonts/Arial Bold.ttf',
+    '/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf',
+  ];
+  for (const p of arialBoldPaths) {
+    if (fs.existsSync(p)) {
+      try {
+        doc.registerFont('Arial-Bold', p);
+        BOLD = 'Arial-Bold';
+      } catch { /* skip */ }
+      break;
+    }
+  }
+
   // Pre-process logo to grayscale
   let logoBuffer: Buffer | null = null;
   if (fs.existsSync(LOGO_PATH)) {
@@ -194,15 +213,15 @@ export async function generatePdf(id: string): Promise<Buffer> {
     }
 
     // ── Company header (centred) ──
-    doc.fontSize(13).font('Helvetica-Bold').fillColor('#000');
+    doc.fontSize(13).font(BOLD).fillColor('#000');
     doc.text(COMPANY_NAME, LEFT, y, { align: 'center', width: CONTENT_W });
     y += 18;
 
-    doc.fontSize(9).font('Helvetica-Bold').fillColor('#000');
+    doc.fontSize(9).font(BOLD).fillColor('#000');
     doc.text(COMPANY_TAGLINE, LEFT, y, { align: 'center', width: CONTENT_W });
     y += textH(COMPANY_TAGLINE, CONTENT_W, 9) + 4;
 
-    doc.fontSize(9).font('Helvetica-Bold').fillColor('#000');
+    doc.fontSize(9).font(BOLD).fillColor('#000');
     doc.text(`Tel: ${COMPANY_PHONE}`, LEFT, y, { align: 'center', width: CONTENT_W });
     y += textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 9) + 2;
 
@@ -212,15 +231,15 @@ export async function generatePdf(id: string): Promise<Buffer> {
     y += 8;
 
     // ── Invoice title + number + date ──
-    doc.fontSize(11).font('Helvetica-Bold').fillColor('#000');
+    doc.fontSize(11).font(BOLD).fillColor('#000');
     doc.text('INVOICE', LEFT, y, { align: 'center', width: CONTENT_W });
     y += 16;
 
-    doc.fontSize(16).font('Helvetica-Bold').fillColor('#000');
+    doc.fontSize(16).font(BOLD).fillColor('#000');
     doc.text(invoice.invoiceNumber, LEFT, y, { align: 'center', width: CONTENT_W });
     y += 22;
 
-    doc.fontSize(9).font('Helvetica-Bold').fillColor('#000');
+    doc.fontSize(9).font(BOLD).fillColor('#000');
     doc.text(`Date: ${formatDate(invoice.date)}`, LEFT, y, { align: 'center', width: CONTENT_W });
     y += 14;
 
@@ -229,11 +248,11 @@ export async function generatePdf(id: string): Promise<Buffer> {
     y += 8;
 
     // ── Client ──
-    doc.fontSize(9).font('Helvetica-Bold').fillColor('#000');
+    doc.fontSize(9).font(BOLD).fillColor('#000');
     doc.text('CUSTOMER', LEFT, y);
     y += 12;
 
-    doc.fontSize(11).font('Helvetica-Bold').fillColor('#000');
+    doc.fontSize(11).font(BOLD).fillColor('#000');
     doc.text(invoice.clientName, LEFT, y);
     y += textH(invoice.clientName, CONTENT_W, 11) + 2;
 
@@ -242,14 +261,14 @@ export async function generatePdf(id: string): Promise<Buffer> {
     y += 8;
 
     // ── Table header ──
-    doc.fontSize(9).font('Helvetica-Bold').fillColor('#000');
+    doc.fontSize(9).font(BOLD).fillColor('#000');
     doc.text('SERVICE', LEFT, y, { width: DESC_W });
     doc.text('AMOUNT', PRICE_X, y, { width: PRICE_W, align: 'right' });
     y += 16;
 
     // ── Table rows ──
     for (const item of invoice.items) {
-      doc.fontSize(10).font('Helvetica-Bold').fillColor('#000');
+      doc.fontSize(10).font(BOLD).fillColor('#000');
       const descH = doc.heightOfString(item.description, { width: DESC_W });
       let rowH = Math.max(18, descH + 4);
 
@@ -259,7 +278,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
       y += rowH;
 
       if (item.date) {
-        doc.fontSize(9).font('Helvetica-Bold').fillColor('#000');
+        doc.fontSize(9).font(BOLD).fillColor('#000');
         const dateText = `Date: ${formatDate(new Date(item.date))}`;
         const dateH = doc.heightOfString(dateText, { width: CONTENT_W });
         doc.text(dateText, LEFT, y, { width: CONTENT_W });
@@ -267,7 +286,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
       }
 
       if (item.paperTypes && item.paperTypes.length > 0) {
-        doc.fontSize(9).font('Helvetica-Bold').fillColor('#000');
+        doc.fontSize(9).font(BOLD).fillColor('#000');
         for (const pt of item.paperTypes) {
           const info = PAPER_INFO[pt];
           if (!info) continue;
@@ -284,7 +303,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     doc.moveTo(LEFT, y).lineTo(RIGHT, y).strokeColor('#000').lineWidth(1).stroke();
     y += 8;
 
-    doc.fontSize(14).font('Helvetica-Bold').fillColor('#000');
+    doc.fontSize(14).font(BOLD).fillColor('#000');
     doc.text('TOTAL', LEFT, y);
     doc.text(formatMoney(invoice.total), PRICE_X, y, { width: PRICE_W, align: 'right' });
     y += 24;
@@ -294,7 +313,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     y += 8;
 
     // ── Warranty text (centred) ──
-    doc.fontSize(9).font('Helvetica-Bold').fillColor('#000');
+    doc.fontSize(9).font(BOLD).fillColor('#000');
     const warrantyText =
       'Warranty applies per the specifications listed above for each ' +
       'installed film type. This document certifies the completion of the ' +
@@ -303,7 +322,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     y += doc.heightOfString(warrantyText, { width: CONTENT_W }) + 4;
 
     // ── Footer ──
-    doc.fontSize(9).font('Helvetica-Bold').fillColor('#000');
+    doc.fontSize(9).font(BOLD).fillColor('#000');
     const footerText = `Generated on ${formatDate(new Date())} by ${COMPANY_NAME}.`;
     doc.text(footerText, LEFT, y, { align: 'center', width: CONTENT_W });
     y += doc.heightOfString(footerText, { width: CONTENT_W }) + 8;
