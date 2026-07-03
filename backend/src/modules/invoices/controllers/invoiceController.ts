@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import * as invoiceService from '../services/invoiceService.js';
+import * as escposService from '../services/escposService.js';
 
 export async function list(req: Request, res: Response, next: NextFunction) {
   try {
@@ -76,6 +77,28 @@ export async function downloadPdf(
       isDownload
         ? `attachment; filename=factura-${req.params.id}.pdf`
         : `inline; filename=factura-${req.params.id}.pdf`
+    );
+    res.send(buffer);
+  } catch (err: any) {
+    if (err.status === 404) {
+      res.status(404).json({ message: err.message });
+      return;
+    }
+    next(err);
+  }
+}
+
+export async function downloadEscpos(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const buffer = await escposService.generate(req.params.id as string);
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=factura-${req.params.id}.prn`
     );
     res.send(buffer);
   } catch (err: any) {
