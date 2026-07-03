@@ -96,14 +96,14 @@ export async function generatePdf(id: string): Promise<Buffer> {
   }
 
   // ── Layout constants (80 mm thermal‑receipt style) ──
-  const PAGE_W = 302;
+  const PAGE_W = 227;
   const MARGIN = 8;
   const CONTENT_W = PAGE_W - MARGIN * 2;
   const LEFT = MARGIN;
   const RIGHT = PAGE_W - MARGIN;
 
   // Column split for items
-  const PRICE_W = 100;
+  const PRICE_W = 70;
   const DESC_W = CONTENT_W - PRICE_W;
   const PRICE_X = LEFT + DESC_W;
 
