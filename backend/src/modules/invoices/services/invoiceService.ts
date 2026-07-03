@@ -176,8 +176,25 @@ export async function generatePdf(id: string): Promise<Buffer> {
   const chunks: Buffer[] = [];
   doc.on('data', (chunk) => chunks.push(chunk));
 
-  // ── Use Courier‑Bold for optimal ESC/POS thermal font mapping (Font A: 12×24 dots) ──
+  // ── Use Courier New (bold) for optimal ESC/POS thermal font mapping (Font A: 12×24 dots) ──
   let BOLD = 'Courier-Bold';
+  const courierPaths = [
+    'C:\\Windows\\Fonts\\courbd.ttf',
+    'C:\\Windows\\Fonts\\COURBD.TTF',
+    'C:\\Windows\\Fonts\\cour.ttf',
+    'C:\\Windows\\Fonts\\COUR.TTF',
+    '/Library/Fonts/Courier New Bold.ttf',
+    '/Library/Fonts/Courier New.ttf',
+  ];
+  for (const p of courierPaths) {
+    if (fs.existsSync(p)) {
+      try {
+        doc.registerFont('CourierNew', p);
+        BOLD = 'CourierNew';
+      } catch { /* skip */ }
+      break;
+    }
+  }
 
   // Pre-process logo to grayscale
   let logoBuffer: Buffer | null = null;
