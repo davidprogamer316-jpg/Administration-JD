@@ -27,7 +27,7 @@ const PAPER_INFO: Record<string, { label: string; specs: string }> = {
   },
   ultra_ceramic: {
     label: 'Ultra Ceramic Film',
-    specs: 'Solar rejection: 99%, UV protection: 100%, Warranty: 10 years',
+    specs: 'Solar rejection: 98%, UV protection: 100%, Warranty: 10 years',
   },
 };
 
