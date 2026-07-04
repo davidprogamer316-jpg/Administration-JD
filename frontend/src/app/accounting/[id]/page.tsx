@@ -8,8 +8,8 @@ import type { AccountingPeriod, CarJob } from '@/types';
 import {
   ArrowLeft,
   Lock,
-  Unlock,
   RefreshCw,
+  ChevronDown,
 } from 'lucide-react';
 import AuthGuard from '@/components/AuthGuard';
 import Sidebar from '@/components/Sidebar';
@@ -34,6 +34,9 @@ export default function AccountingDetailPage() {
   const [jobs, setJobs] = useState<CarJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [jobsExpanded, setJobsExpanded] = useState(false);
+  const [employeeSectionExpanded, setEmployeeSectionExpanded] = useState(false);
+  const [expandedEmployees, setExpandedEmployees] = useState<Set<string>>(new Set());
 
   async function load() {
     try {
@@ -168,34 +171,49 @@ export default function AccountingDetailPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <section className="rounded-xl border border-border shadow-sm bg-surface p-6">
-              <h2 className="text-lg font-heading font-semibold text-text-body mb-4">
-                Trabajos del periodo ({jobs.length})
-              </h2>
-              {jobs.length === 0 ? (
-                <p className="text-text-muted text-sm">No hay trabajos en este periodo.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left px-2 py-2 text-text-muted text-xs font-medium uppercase tracking-wider">Fecha</th>
-                        <th className="text-left px-2 py-2 text-text-muted text-xs font-medium uppercase tracking-wider">VIN</th>
-                        <th className="text-left px-2 py-2 text-text-muted text-xs font-medium uppercase tracking-wider">Descripción</th>
-                        <th className="text-right px-2 py-2 text-text-muted text-xs font-medium uppercase tracking-wider">Pago</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {jobs.map((job) => (
-                        <tr key={job._id} className="border-b border-border last:border-0">
-                          <td className="px-2 py-2 text-sm text-text-body whitespace-nowrap">{formatDate(job.date)}</td>
-                          <td className="px-2 py-2 text-sm text-text-body font-mono">{job.vin}</td>
-                          <td className="px-2 py-2 text-sm text-text-body">{job.description}</td>
-                          <td className="px-2 py-2 text-sm text-text-body text-right">{formatMoney(job.payment)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+            <section className="rounded-xl border border-border shadow-sm bg-surface overflow-hidden">
+              <button
+              onClick={() => setEmployeeSectionExpanded(!employeeSectionExpanded)}
+                className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-bg-page transition-colors"
+              >
+                <h2 className="text-lg font-heading font-semibold text-text-body">
+                  Trabajos del periodo ({jobs.length})
+                </h2>
+                <ChevronDown
+                  size={18}
+                  className={`shrink-0 text-text-muted transition-transform ${
+                    jobsExpanded ? '' : '-rotate-90'
+                  }`}
+                />
+              </button>
+            {employeeSectionExpanded && (
+                <div className="border-t border-border px-6 py-4">
+                  {jobs.length === 0 ? (
+                    <p className="text-text-muted text-sm">No hay trabajos en este periodo.</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="text-left px-2 py-2 text-text-muted text-xs font-medium uppercase tracking-wider">Fecha</th>
+                            <th className="text-left px-2 py-2 text-text-muted text-xs font-medium uppercase tracking-wider">VIN</th>
+                            <th className="text-left px-2 py-2 text-text-muted text-xs font-medium uppercase tracking-wider">Descripción</th>
+                            <th className="text-right px-2 py-2 text-text-muted text-xs font-medium uppercase tracking-wider">Pago</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {jobs.map((job) => (
+                            <tr key={job._id} className="border-b border-border last:border-0">
+                              <td className="px-2 py-2 text-sm text-text-body whitespace-nowrap">{formatDate(job.date)}</td>
+                              <td className="px-2 py-2 text-sm text-text-body font-mono">{job.vin}</td>
+                              <td className="px-2 py-2 text-sm text-text-body">{job.description}</td>
+                              <td className="px-2 py-2 text-sm text-text-body text-right">{formatMoney(job.payment)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
             </section>
@@ -222,43 +240,91 @@ export default function AccountingDetailPage() {
             </section>
           </div>
 
-          <section className="rounded-xl border border-border shadow-sm bg-surface p-6 mt-6">
-            <h2 className="text-lg font-heading font-semibold text-text-body mb-4">
-              Ganancias empleados por trabajo
-            </h2>
-            {jobs.length === 0 ? (
-              <p className="text-text-muted text-sm">No hay datos para mostrar.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left px-2 py-2 text-text-muted text-xs font-medium uppercase tracking-wider">Trabajo</th>
-                      <th className="text-left px-2 py-2 text-text-muted text-xs font-medium uppercase tracking-wider">Empleado</th>
-                      <th className="text-right px-2 py-2 text-text-muted text-xs font-medium uppercase tracking-wider">%</th>
-                      <th className="text-right px-2 py-2 text-text-muted text-xs font-medium uppercase tracking-wider">Ganancia</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {jobs.flatMap((job) =>
-                      period.income > 0 && job.employeeShares?.length
-                        ? job.employeeShares.map((share) => {
-                            const amount = period.netToDistribute * (share.percentage / 100) * (job.payment / period.income);
-                            return (
-                              <tr key={`${job._id}-${share.employeeId}`} className="border-b border-border last:border-0">
-                                <td className="px-2 py-2 text-sm text-text-body">{job.description}</td>
-                                <td className="px-2 py-2 text-sm text-text-body">{share.employeeName}</td>
-                                <td className="px-2 py-2 text-sm text-text-body text-right">{share.percentage}%</td>
-                                <td className="px-2 py-2 text-sm text-text-body text-right font-medium">
-                                  {formatMoney(Math.round(amount * 100) / 100)}
-                                </td>
-                              </tr>
-                            );
-                          })
-                        : []
-                    )}
-                  </tbody>
-                </table>
+          <section className="rounded-xl border border-border shadow-sm bg-surface overflow-hidden mt-6">
+            <button
+              onClick={() => setJobsExpanded(!jobsExpanded)}
+              className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-bg-page transition-colors"
+            >
+              <h2 className="text-lg font-heading font-semibold text-text-body">
+                Ganancias empleados por trabajo
+              </h2>
+              <ChevronDown
+                size={18}
+                className={`shrink-0 text-text-muted transition-transform ${
+                  employeeSectionExpanded ? '' : '-rotate-90'
+                }`}
+              />
+            </button>
+            {jobsExpanded && (
+              <div className="border-t border-border px-6 py-4">
+                {jobs.length === 0 || period.income <= 0 ? (
+                  <p className="text-text-muted text-sm">No hay datos para mostrar.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {(() => {
+                      const grouped = new Map<string, { name: string; rows: { description: string; percentage: number; amount: number }[]; total: number }>();
+                      for (const job of jobs) {
+                        if (!job.employeeShares?.length) continue;
+                        for (const share of job.employeeShares) {
+                          const amount = period.netToDistribute * (share.percentage / 100) * (job.payment / period.income);
+                          const rounded = Math.round(amount * 100) / 100;
+                          if (!grouped.has(share.employeeId)) {
+                            grouped.set(share.employeeId, { name: share.employeeName, rows: [], total: 0 });
+                          }
+                          const emp = grouped.get(share.employeeId)!;
+                          emp.rows.push({ description: job.description, percentage: share.percentage, amount: rounded });
+                          emp.total += rounded;
+                        }
+                      }
+                      return Array.from(grouped.entries()).map(([empId, emp]) => {
+                        const open = expandedEmployees.has(empId);
+                        return (
+                          <div key={empId} className="rounded-lg border border-border overflow-hidden">
+                            <button
+                              onClick={() => {
+                                const next = new Set(expandedEmployees);
+                                if (open) next.delete(empId); else next.add(empId);
+                                setExpandedEmployees(next);
+                              }}
+                              className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-bg-page transition-colors"
+                            >
+                              <div className="flex items-center gap-2">
+                                <ChevronDown
+                                  size={16}
+                                  className={`text-text-muted transition-transform ${open ? '' : '-rotate-90'}`}
+                                />
+                                <span className="font-medium text-text-body">{emp.name}</span>
+                              </div>
+                              <span className="font-semibold text-text-body">{formatMoney(emp.total)}</span>
+                            </button>
+                            {open && (
+                              <div className="border-t border-border overflow-x-auto">
+                                <table className="w-full">
+                                  <thead>
+                                    <tr className="border-b border-border bg-bg-page">
+                                      <th className="text-left px-4 py-2 text-text-muted text-xs font-medium uppercase tracking-wider">Trabajo</th>
+                                      <th className="text-right px-4 py-2 text-text-muted text-xs font-medium uppercase tracking-wider">%</th>
+                                      <th className="text-right px-4 py-2 text-text-muted text-xs font-medium uppercase tracking-wider">Ganancia</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {emp.rows.map((row, idx) => (
+                                      <tr key={idx} className="border-b border-border last:border-0">
+                                        <td className="px-4 py-2 text-sm text-text-body">{row.description}</td>
+                                        <td className="px-4 py-2 text-sm text-text-body text-right">{row.percentage}%</td>
+                                        <td className="px-4 py-2 text-sm text-text-body text-right font-medium">{formatMoney(row.amount)}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                )}
               </div>
             )}
           </section>
