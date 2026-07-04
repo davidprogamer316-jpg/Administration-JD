@@ -214,7 +214,14 @@ export async function remove(id: string) {
   await CarJob.deleteOne({ _id: id });
 
   if (period) {
-    await recalculateById(period._id.toString());
+    const updated = await recalculateById(period._id.toString());
+    if (
+      updated.income === 0 &&
+      updated.expenseItems.length === 0 &&
+      updated.fixedExpenses.reduce((s: number, fe: { amount: number }) => s + fe.amount, 0) === 0
+    ) {
+      await AccountingPeriod.deleteOne({ _id: period._id });
+    }
   }
 
   return { message: 'Trabajo eliminado' };
