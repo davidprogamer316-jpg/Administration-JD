@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   Lock,
   Unlock,
+  RefreshCw,
 } from 'lucide-react';
 import AuthGuard from '@/components/AuthGuard';
 import Sidebar from '@/components/Sidebar';
@@ -59,6 +60,15 @@ export default function AccountingDetailPage() {
       load();
     } catch {
       setError('Error al cerrar periodo');
+    }
+  }
+
+  async function handleRecalculate() {
+    try {
+      await api.patch(`/accounting/${params.id}/recalculate`);
+      load();
+    } catch {
+      setError('Error al recalcular periodo');
     }
   }
 
@@ -120,13 +130,22 @@ export default function AccountingDetailPage() {
               </span>
             </div>
             {!period.closed && (
-              <button
-                onClick={handleClose}
-                className="flex items-center gap-2 rounded-lg border border-border text-text-muted px-4 py-2 text-sm hover:bg-bg-page transition-colors"
-              >
-                <Lock size={16} />
-                Cerrar periodo
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleRecalculate}
+                  className="flex items-center gap-2 rounded-lg border border-border text-text-muted px-4 py-2 text-sm hover:bg-bg-page transition-colors"
+                >
+                  <RefreshCw size={16} />
+                  Recalcular
+                </button>
+                <button
+                  onClick={handleClose}
+                  className="flex items-center gap-2 rounded-lg border border-border text-text-muted px-4 py-2 text-sm hover:bg-bg-page transition-colors"
+                >
+                  <Lock size={16} />
+                  Cerrar periodo
+                </button>
+              </div>
             )}
           </div>
 
