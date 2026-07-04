@@ -11,6 +11,16 @@ export async function list(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+export async function listGrouped(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { startDate, endDate, vin } = req.query as Record<string, string | undefined>;
+    const groups = await carJobService.listGrouped({ startDate, endDate, vin });
+    res.json(groups);
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function getById(
   req: Request,
   res: Response,

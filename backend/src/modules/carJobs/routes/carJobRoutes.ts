@@ -7,6 +7,7 @@ const router = Router();
 router.use(authenticateToken);
 
 router.get('/', carJobController.list);
+router.get('/grouped', carJobController.listGrouped);
 router.get('/:id', carJobController.getById);
 router.post('/', carJobController.create);
 router.patch('/:id', carJobController.update);

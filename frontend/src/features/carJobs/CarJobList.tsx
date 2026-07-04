@@ -2,8 +2,8 @@
 
 import { useState, useEffect, type FormEvent } from 'react';
 import { api } from '@/lib/api';
-import type { CarJob } from '@/types';
-import { Plus, Pencil, Trash2, Search, FileDown, FileText } from 'lucide-react';
+import type { CarJob, QuincenaGroup } from '@/types';
+import { Plus, Pencil, Trash2, Search, FileDown, FileText, ChevronDown } from 'lucide-react';
 import { downloadFromApi } from '@/lib/download';
 import VinScanner from '@/components/VinScanner';
 import Modal from '@/components/Modal';
@@ -29,8 +29,9 @@ const PAPER_OPTIONS = [
 ];
 
 export default function CarJobList() {
-  const [jobs, setJobs] = useState<CarJob[]>([]);
+  const [groupedData, setGroupedData] = useState<QuincenaGroup[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<CarJob | null>(null);
   const [startDate, setStartDate] = useState('');
@@ -61,8 +62,9 @@ export default function CarJobList() {
       if (endDate) params.set('endDate', endDate);
       if (searchVin) params.set('vin', searchVin);
       const qs = params.toString();
-      const res = await api.get<CarJob[]>(`/car-jobs${qs ? `?${qs}` : ''}`);
-      setJobs(res);
+      const res = await api.get<QuincenaGroup[]>(`/car-jobs/grouped${qs ? `?${qs}` : ''}`);
+      setGroupedData(res);
+      setExpandedKey(null);
     } catch {
       setError('Error al cargar trabajos');
     } finally {
@@ -340,91 +342,130 @@ export default function CarJobList() {
         </form>
       </Modal>
 
-      {jobs.length === 0 ? (
+      {groupedData.length === 0 ? (
         <div className="rounded-xl border border-border p-12 shadow-sm bg-surface text-center">
           <p className="text-text-muted">
             No hay trabajos registrados{startDate || endDate ? ' en este rango' : ''}.
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border shadow-sm bg-surface">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
-                  Fecha
-                </th>
-                <th className="text-left px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
-                  VIN
-                </th>
-                <th className="text-left px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
-                  Descripción
-                </th>
-                <th className="text-right px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
-                  Pago
-                </th>
-                <th className="text-center px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
-                  Estado
-                </th>
-                <th className="text-right px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {jobs.map((job, i) => (
-                <tr
-                  key={job._id}
-                  onClick={() => setDetailJob(job)}
-                  className={`border-b border-border even:bg-bg-page cursor-pointer hover:bg-accent/5 transition-colors`}
-                >
-                  <td className="px-4 py-3 text-sm text-text-body">
-                    {formatDate(job.date)}
-                  </td>
-                  <td className="px-4 py-3 text-sm font-mono text-text-body">
-                    {job.vin}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-text-body max-w-xs truncate">
-                    {job.description}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-text-body text-right font-medium">
-                    {formatMoney(job.payment)}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {job.closed ? (
-                      <span className="rounded-full px-3 py-1 text-xs font-medium bg-gray-100 text-gray-500">
-                        Cerrado
-                      </span>
-                    ) : (
-                      <span className="rounded-full px-3 py-1 text-xs font-medium bg-emerald-100 text-emerald-700">
-                        Abierto
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => startEdit(job)}
-                        className="p-1.5 text-text-muted hover:text-accent transition-colors"
-                        title="Editar"
-                        disabled={job.closed}
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(job)}
-                        className="p-1.5 text-text-muted hover:text-danger transition-colors"
-                        title="Eliminar"
-                        disabled={job.closed}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-3">
+          {groupedData.map((group) => (
+            <div
+              key={group.periodStartDate}
+              className="rounded-xl border border-border shadow-sm bg-surface overflow-hidden"
+            >
+              <button
+                onClick={() =>
+                  setExpandedKey(
+                    expandedKey === group.periodStartDate ? null : group.periodStartDate
+                  )
+                }
+                className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-bg-page transition-colors"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <ChevronDown
+                    size={18}
+                    className={`shrink-0 text-text-muted transition-transform ${
+                      expandedKey === group.periodStartDate ? '' : '-rotate-90'
+                    }`}
+                  />
+                  <span className="font-semibold text-text-body truncate">
+                    {group.label}
+                  </span>
+                </div>
+                <div className="flex items-center gap-4 text-sm text-text-muted shrink-0 ml-4">
+                  <span>
+                    {group.totalJobs} trabajo{group.totalJobs !== 1 ? 's' : ''}
+                  </span>
+                  <span className="font-medium text-text-body">
+                    {formatMoney(group.totalPayment)}
+                  </span>
+                </div>
+              </button>
+              {expandedKey === group.periodStartDate && (
+                <div className="overflow-x-auto border-t border-border">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
+                          Fecha
+                        </th>
+                        <th className="text-left px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
+                          VIN
+                        </th>
+                        <th className="text-left px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
+                          Descripción
+                        </th>
+                        <th className="text-right px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
+                          Pago
+                        </th>
+                        <th className="text-center px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
+                          Estado
+                        </th>
+                        <th className="text-right px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
+                          Acciones
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.jobs.map((job, i) => (
+                        <tr
+                          key={job._id}
+                          onClick={() => setDetailJob(job)}
+                          className={`border-b border-border even:bg-bg-page cursor-pointer hover:bg-accent/5 transition-colors`}
+                        >
+                          <td className="px-4 py-3 text-sm text-text-body">
+                            {formatDate(job.date)}
+                          </td>
+                          <td className="px-4 py-3 text-sm font-mono text-text-body">
+                            {job.vin}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-text-body max-w-xs truncate">
+                            {job.description}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-text-body text-right font-medium">
+                            {formatMoney(job.payment)}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {job.closed ? (
+                              <span className="rounded-full px-3 py-1 text-xs font-medium bg-gray-100 text-gray-500">
+                                Cerrado
+                              </span>
+                            ) : (
+                              <span className="rounded-full px-3 py-1 text-xs font-medium bg-emerald-100 text-emerald-700">
+                                Abierto
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => startEdit(job)}
+                                className="p-1.5 text-text-muted hover:text-accent transition-colors"
+                                title="Editar"
+                                disabled={job.closed}
+                              >
+                                <Pencil size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(job)}
+                                className="p-1.5 text-text-muted hover:text-danger transition-colors"
+                                title="Eliminar"
+                                disabled={job.closed}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 

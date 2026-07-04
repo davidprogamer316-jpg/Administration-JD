@@ -40,6 +40,16 @@ export interface AccountingPeriod {
   closed: boolean;
 }
 
+export interface QuincenaGroup {
+  periodStartDate: string;
+  periodEndDate: string;
+  periodNumber: number;
+  label: string;
+  jobs: CarJob[];
+  totalJobs: number;
+  totalPayment: number;
+}
+
 export interface CarJob {
   _id: string;
   date: string;

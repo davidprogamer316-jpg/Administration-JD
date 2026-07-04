@@ -1,6 +1,6 @@
 import { CarJob } from '../models/index.js';
 import { AccountingPeriod } from '../../accounting/models/index.js';
-import { getQuincena } from '../../../shared/utils/quincena.js';
+import { getQuincena, formatQuincena } from '../../../shared/utils/quincena.js';
 import { recalculateById } from '../../accounting/services/accountingService.js';
 import { Employee } from '../../employees/models/index.js';
 
@@ -59,6 +59,49 @@ export async function list(filters?: { startDate?: string; endDate?: string; vin
   }
 
   return CarJob.find(query).sort({ date: -1 });
+}
+
+export interface QuincenaGroup {
+  periodStartDate: string;
+  periodEndDate: string;
+  periodNumber: number;
+  label: string;
+  jobs: typeof CarJob.prototype[];
+  totalJobs: number;
+  totalPayment: number;
+}
+
+export async function listGrouped(filters?: { startDate?: string; endDate?: string; vin?: string }): Promise<QuincenaGroup[]> {
+  const jobs = await list(filters);
+
+  const groupsMap = new Map<string, Omit<QuincenaGroup, 'totalJobs' | 'totalPayment'> & { jobs: typeof CarJob.prototype[] }>();
+
+  for (const job of jobs) {
+    const range = getQuincena(job.date);
+    const key = range.start.toISOString();
+
+    if (!groupsMap.has(key)) {
+      groupsMap.set(key, {
+        periodStartDate: range.start.toISOString(),
+        periodEndDate: range.end.toISOString(),
+        periodNumber: range.periodNumber,
+        label: formatQuincena(range),
+        jobs: [],
+      });
+    }
+
+    groupsMap.get(key)!.jobs.push(job);
+  }
+
+  const groups = Array.from(groupsMap.values());
+
+  groups.sort((a, b) => new Date(b.periodStartDate).getTime() - new Date(a.periodStartDate).getTime());
+
+  return groups.map((g) => ({
+    ...g,
+    totalJobs: g.jobs.length,
+    totalPayment: g.jobs.reduce((sum, j) => sum + j.payment, 0),
+  }));
 }
 
 export async function getById(id: string) {
