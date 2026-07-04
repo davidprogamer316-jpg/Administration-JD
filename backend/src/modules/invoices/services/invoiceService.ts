@@ -121,7 +121,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
   }
 
   // ── Pre-process logo — read dimensions first for page height calc ──
-  const LOGO_DISPLAY_W = 80;
+  const LOGO_DISPLAY_W = 160;
   let logoBuffer: Buffer | null = null;
   let logoH = 0;
   if (!cachedLogo && fs.existsSync(LOGO_PATH)) {
