@@ -17,8 +17,6 @@ const COMPANY_URL = 'https://tinting-film.com';
 const LOGO_PATH = path.join(__dirname, '../../../../assets/logo.PNG');
 const QR_SIZE = 72;
 
-let cachedLogo: { buffer: Buffer; height: number } | null = null;
-
 const PAPER_INFO: Record<string, { label: string; specs: string }> = {
   premium: {
     label: 'Premium Film',
@@ -121,25 +119,19 @@ export async function generatePdf(id: string): Promise<Buffer> {
   }
 
   // ── Pre-process logo — read dimensions first for page height calc ──
-  const LOGO_DISPLAY_W = 160;
   let logoBuffer: Buffer | null = null;
+  const LOGO_DISPLAY_W = 160;
   let logoH = 0;
-  if (!cachedLogo && fs.existsSync(LOGO_PATH)) {
+  if (fs.existsSync(LOGO_PATH)) {
     const imgBuf = fs.readFileSync(LOGO_PATH);
     const meta = await sharp(imgBuf).metadata();
     logoH = Math.round(LOGO_DISPLAY_W * meta.height! / meta.width!);
     logoBuffer = await sharp(imgBuf).grayscale().toBuffer();
-    cachedLogo = { buffer: logoBuffer, height: logoH };
-  } else if (cachedLogo) {
-    logoBuffer = cachedLogo.buffer;
-    logoH = cachedLogo.height;
   }
 
   let pageH = MARGIN;
   // Logo area
   pageH += logoH || 0;
-  // Gap between logo and header
-  pageH += 5;
   // Company header (name + tagline + phone)
   pageH += 16 + textH(COMPANY_TAGLINE, CONTENT_W, 10) + textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 10);
   // Thin divider
@@ -220,6 +212,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     y += 5;
 
     // ── Company header (centred) ──
+    y += 5;
     doc.fontSize(18).font(FONT).fillColor('#000');
     doc.text(COMPANY_NAME, LEFT, y, { align: 'center', width: CONTENT_W });
     y += 16;
