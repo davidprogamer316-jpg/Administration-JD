@@ -130,8 +130,12 @@ export async function generatePdf(id: string): Promise<Buffer> {
   }
 
   let pageH = MARGIN;
+  // Top margin
+  pageH += 5;
   // Logo area
   pageH += logoH || 0;
+  // Gap between logo and header
+  pageH += 5;
   // Company header (name + tagline + phone)
   pageH += 16 + textH(COMPANY_TAGLINE, CONTENT_W, 10) + textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 10);
   // Thin divider
@@ -201,7 +205,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    let y = 0;
+    let y = 5;
 
     // ── Logo (grayscale) ──
     if (logoBuffer) {
@@ -212,7 +216,6 @@ export async function generatePdf(id: string): Promise<Buffer> {
     y += 5;
 
     // ── Company header (centred) ──
-    y += 5;
     doc.fontSize(18).font(FONT).fillColor('#000');
     doc.text(COMPANY_NAME, LEFT, y, { align: 'center', width: CONTENT_W });
     y += 16;
