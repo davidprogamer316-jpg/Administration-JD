@@ -59,7 +59,7 @@ export async function generateEmployeePdf(
     doc.fontSize(16).font(FONT_B).fillColor('#000');
     doc.text('Tinting-JD', ML, y += 0, { align: 'center', width: CW });
     doc.fontSize(12).font(FONT);
-    doc.text(`Historial de pagos — ${employee.name}`, ML, y += 22, { align: 'center', width: CW });
+    doc.text(`Historial de pagos — ${employee!.name}`, ML, y += 22, { align: 'center', width: CW });
     doc.fontSize(10).fillColor('#555');
     doc.text(`Mes: ${monthName}`, ML, y += 18, { align: 'center', width: CW });
     y += 26;
