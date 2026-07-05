@@ -70,6 +70,8 @@ La paleta se inspira en un taller nocturno: el indigo del uniforme de trabajo, e
 
 Ambas cargadas desde Google Fonts via `next/font/google` en `layout.tsx`.
 
+**PDFs (facturas y empleados):** Courier / CourierPrime (TTF empaquetado en `backend/assets/fonts/`). Todo #000, 9pt mínimo, 204pt de ancho.
+
 ---
 
 ## 4. Layout y Estructura
@@ -83,11 +85,13 @@ Ambas cargadas desde Google Fonts via `next/font/google` en `layout.tsx`.
 - **Transición**: `duration-200 ease-in-out` en translate X
 - **Responsive**: mobile oculto con `-translate-x-full`, desktop siempre visible con `md:translate-x-0`
 - **Sombra**: `shadow-lg`
+- **Hamburger toggle**: botón para abrir/cerrar en mobile
 
-### Páginas interiores (dashboard layout)
+### Páginas interiores
 - **Contenedor**: margen izquierdo igual al sidebar (`md:ml-56`) + `p-6` o `px-6 pb-8`
 - **Ancho máximo formularios**: `max-w-2xl` (672px centrado)
 - **Tablas**: `overflow-x-auto` con scroll horizontal en mobile
+- **Columnas responsive en tablas**: DDDG/Ganancia ocultas en `<sm`, columnas empleados/Jefe ocultas en `<lg`
 
 ### Tarjetas
 - `rounded-xl border border-border p-6 shadow-sm bg-surface`
@@ -105,6 +109,8 @@ Ambas cargadas desde Google Fonts via `next/font/google` en `layout.tsx`.
 - **Primario (accent)**: `rounded-lg bg-accent text-white px-5 py-2.5 text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-50`
 - **Submit login**: `rounded-xl bg-accent text-brand font-semibold px-4 py-3 w-full`
 - **Eliminar**: `text-danger hover:text-danger/80`
+- **Borde (secundario)**: `rounded-lg border border-border text-text-muted px-4 py-2 text-sm hover:bg-bg-page transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed`
+- **Con spinner**: el icono `RefreshCw` gira con `animate-spin` mientras hay una operación en curso, y el texto cambia (ej. "Recalculando...", "Cerrando...")
 
 ---
 
@@ -139,6 +145,31 @@ Ambas cargadas desde Google Fonts via `next/font/google` en `layout.tsx`.
 ### Indicador de carga
 - Spinner SVG con `animate-spin` (rotación infinita)
 
+### Secciones colapsables
+- **Botón header** con `w-full flex items-center justify-between px-6 py-4 text-left hover:bg-bg-page transition-colors`
+- Icono `ChevronDown` que rota `-rotate-90` cuando está colapsado
+- Contenido con `border-t border-border px-6 py-4`
+- Usado en: trabajos del periodo, ganancias empleados por trabajo
+
+### Acordeón por empleado (ganancias)
+- Cada empleado es un `rounded-lg border border-border overflow-hidden`
+- Header clickeable con `flex items-center justify-between px-4 py-3 text-left hover:bg-bg-page transition-colors`
+- Chevron que rota al abrir
+- Tabla interna con `border-t border-border`
+
+### DateInput (iOS placeholder fix)
+- Wrapper `<div>` de `relative` con `<input type="date">`
+- `<span>` superpuesto como placeholder (se oculta cuando hay valor)
+- Clases: `absolute left-3.5 top-1/2 -translate-y-1/2 text-sm pointer-events-none text-text-muted`
+- Se oculta con `hidden` cuando el input tiene valor
+
+### VinScanner
+- **Modal** con video en vivo via `getUserMedia`
+- Botón "Tomar foto": captura frame del video a un canvas
+- Decodifica con `@zxing/library` `decodeFromImageUrl`
+- No hay escaneo continuo — solo se decodifica al presionar el botón
+- Input oculto de tipo file como fallback
+
 ---
 
 ## 6. Pantalla de Login — Diseño Específico
@@ -152,6 +183,7 @@ La pantalla de login es intencionalmente diferente al resto de la app:
 - Patrón de puntos tenue (`radial-gradient` con puntos blancos al 3% de opacidad)
 - Tarjeta con efecto **glassmorphism** (`backdrop-blur-sm`, `bg-white/5`, `border-white/10`)
 - Logo grande y glow, inputs transparentes sobre fondo oscuro
+- **Sin enlace de registro** ni texto "ERP"
 
 Esta ruptura visual marca el contraste entre "acceso" (experiencia profesional, premium) y "trabajo" (app funcional y clara).
 
@@ -161,9 +193,11 @@ Esta ruptura visual marca el contraste entre "acceso" (experiencia profesional, 
 
 - **Mobile**: sidebar oculto, se abre con botón hamburger + overlay oscuro
 - **Tablet/media**: sidebar visible en md+
-- **Tablas**: `overflow-x-auto` en todos los listados
+- **Tablas**: `overflow-x-auto` en todos los listados (accounting, car jobs, invoices, employees)
+- **Columnas ocultas**: DDDG y Ganancia ocultas en `<sm`, columnas empleados/Jefe ocultas en `<lg` (AccountingList)
 - **Formularios**: stack vertical (`flex-col`) con inputs a ancho completo
-- **Tarjetas**: `max-w-2xl mx-auto` para centrar en pantallas grandes
+- **Tarjetas de resumen**: grid `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4` en detalle de periodo
+- **Detalle de periodo**: grid `grid-cols-1 lg:grid-cols-2` para trabajos/gastos
 
 ---
 
@@ -176,6 +210,8 @@ Esta ruptura visual marca el contraste entre "acceso" (experiencia profesional, 
 | Inputs          | `transition-colors` en focus     |
 | Botón submit    | `active:scale-[0.98]` (press)    |
 | Spinner         | `animate-spin`                   |
+| Chevron colapsable | `transition-transform` con `-rotate-90` |
+| Modal backdrop  | no animación (aparece/desaparece instantáneo) |
 
 Sin animaciones decorativas superfluas — solo las necesarias para feedback funcional.
 
@@ -185,25 +221,103 @@ Sin animaciones decorativas superfluas — solo las necesarias para feedback fun
 
 Librería: **lucide-react** (v0.x). Todos los iconos son inline SVGs, color heredado del texto padre.
 
-| Página         | Iconos usados                                    |
-|----------------|--------------------------------------------------|
-| Sidebar        | `LayoutDashboard`, `Users`, `Car`, `Calculator`, `FileText`, `Settings`, `LogOut`, `X` |
-| Login          | `Mail`, `Lock`, `Eye`, `EyeOff`, `ShieldOff`     |
-| Settings       | `Shield`, `ShieldOff`, `Key`, `Check`            |
-| CarJobList     | `Plus`, `Pencil`, `Trash2`, `Search`, `FileDown`, `FileText` |
-| EmployeeList   | `Pencil`, `Trash2`, `UserCheck`, `UserX`, `Plus`, `FileDown` |
-| InvoiceList    | `Plus`, `FileDown`, `Trash2` |
-
-## 11. Modales
-
-- **Modal genérico** (`frontend/src/components/Modal.tsx`): backdrop oscuro `bg-black/40 backdrop-blur-sm`, tarjeta centrada `max-w-lg`, título con botón X, cierra con Escape o click fuera.
-- Usado en: detalle de trabajo (CarJobList), selector mes/año PDF (EmployeeList), generar factura desde trabajo (CarJobList), detalle de factura (InvoiceList).
-- **Modal de generar factura:** formulario simple con nombre del cliente + resumen del trabajo seleccionado. Cierra automáticamente tras 2s al crear la factura exitosamente.
-- **Modal de detalle de factura:** muestra cliente, fecha, lista de servicios con precios, total, y botón para descargar PDF.
+| Página              | Iconos usados |
+|---------------------|--------------------------------------------------|
+| Sidebar             | `LayoutDashboard`, `Users`, `Car`, `Calculator`, `FileText`, `Settings`, `LogOut`, `X` |
+| Login               | `Mail`, `Lock`, `Eye`, `EyeOff`, `ShieldOff` |
+| Settings            | `Shield`, `ShieldOff`, `Key`, `Check`, `Plus`, `Trash2` |
+| CarJobList          | `Plus`, `Pencil`, `Trash2`, `Search`, `FileDown`, `FileText`, `Camera` |
+| EmployeeList        | `Pencil`, `Trash2`, `UserCheck`, `UserX`, `Plus`, `FileDown`, `Eye` |
+| InvoiceList         | `Plus`, `FileDown`, `Trash2`, `Eye`, `Search` |
+| AccountingDetail    | `ArrowLeft`, `Lock`, `RefreshCw`, `ChevronDown` |
+| Dashboard           | `Filter` (botón Filtrar) |
 
 ---
 
-## 12. Fuentes y Referencias
+## 10. Modales
+
+- **Modal genérico** (`frontend/src/components/Modal.tsx`): backdrop oscuro `bg-black/40 backdrop-blur-sm`, tarjeta centrada `max-w-lg`, título con botón X, cierra con Escape o click fuera.
+- **Responsivo en mobile:** `max-h-[70vh] overflow-y-auto`, `items-start sm:items-center`, `pt-10 sm:pt-0`, título con `truncate`.
+- Usado en:
+  - Detalle de trabajo (CarJobList): clic en fila
+  - Selector mes/año PDF empleado (EmployeeList)
+  - Generar factura desde trabajo (CarJobList)
+  - Detalle de factura (InvoiceList)
+  - Editar gasto fijo (SettingsView)
+  - Escáner VIN (CarJobList)
+- **Modal de generar factura:** formulario simple con nombre del cliente + resumen del trabajo seleccionado. Cierra automáticamente tras 2s al crear la factura exitosamente.
+- **Modal de detalle de factura:** muestra cliente, fecha, lista de servicios con precios, total, y botón para descargar PDF.
+- **Modal de escáner VIN:** video en vivo con botón "Tomar foto". Al decodificar, cierra y rellena el campo VIN.
+
+---
+
+## 11. Componentes de Página
+
+### AccountingDetail (página de detalle de periodo)
+- Breadcrumb "Volver a contabilidad"
+- Header con número de periodo + fechas + badge abierto/cerrado
+- Botones (si abierto): **Recalcular** (con spinner + texto "Recalculando...") y **Cerrar periodo** (con texto "Cerrando...")
+- Ambos botones tienen `cursor-pointer` y `disabled` state (opacidad reducida, cursor not-allowed)
+- Tarjetas resumen en grid 1/2/4 columnas: Ingresos, Gastos, DDDG, Ganancia, Neto, cada empleado, Jefe
+- Grid 2 columnas en lg:
+  - **Trabajos del periodo**: sección colapsable con tabla (fecha, VIN, descripción, pago)
+  - **Gastos del periodo**: gastos fijos (solo lectura) + ExpenseEditor (editable si abierto)
+- **Ganancias empleados por trabajo**: sección colapsable con acordeón por empleado
+  - Cada empleado expandible: tabla con Trabajo, %, Ganancia
+
+### Settings
+- **Account section**: email, nombre, fecha creación, bloqueo (con botón desbloquear)
+- **Cambiar contraseña**: formulario con contraseña actual + nueva
+- **Fixed Expenses section**: lista de gastos fijos con nombre + monto mensual, botones editar/eliminar, botón agregar
+  - Modal para crear/editar: nombre + monto
+
+### Dashboard
+- **Filtro de fechas**: inputs de fecha con botón "Filtrar" (icono `Filter`)
+- **No se actualiza al cambiar fechas** — solo al presionar el botón
+- **Carga por defecto**: mes actual
+- Tarjetas de resumen: Ingresos, Gastos, Ganancia, Neto, Total Empleados, Jefe, Total Empleados individuales
+- Gráfico de barras (ingresos vs gastos vs ganancia) + gráfico dona (distribución empleados)
+
+---
+
+## 12. PDFs
+
+### Factura (invoice)
+- **Formato:** ticket POS 80mm, 204pt ancho, Courier/CourierPrime
+- **Colores:** solo #000 (negro), sin grises, sin colores
+- **Fuente:** Courier 9pt mínimo, todo Helvetica-Bold
+- **Logo:** centrado 200px, escala de grises via `sharp`. Opcional — si no existe el archivo `backend/assets/logo.PNG`, se omite.
+- **Sin QR**
+- **Teléfono:** 786 793 4440
+- **Tabla de items:** solo fecha + monto (sin descripción, sin especificaciones de papel)
+- **Total:** grande, prominente
+- **Garantía:** texto simplificado en inglés
+- **Botones:** "Ver factura" (ojo → inline en nueva pestaña con `?token=`), "Descargar" (download)
+- Archivo: `backend/src/modules/invoices/services/invoiceService.ts`
+
+### Empleado (employee payment PDF)
+- **Mismo formato que factura:** 204pt ancho, Courier/CourierPrime, solo #000
+- **Sin logo, sin QR, sin tagline, sin teléfono**
+- **Encabezado:** "Windows Tinting" + "JD" (dos líneas separadas)
+- **Contenido:** "Historial de pagos — {nombre}", mes, tabla FECHA | GANANCIA por periodo, total por periodo, total general
+- **Ganancia:** solo fecha + monto (sin VIN, sin descripción del trabajo)
+- **Footer:** "Generado por Tinting-JD"
+- **Botones:** ojo (ver inline en nueva pestaña con `?token=`), descarga
+- Archivo: `backend/src/modules/employees/services/pdfService.ts`
+
+---
+
+## 13. Tipos de Papel (CarJob)
+
+Selector multi-checkbox con opciones en inglés:
+- `Premium Film`
+- `Ceramic Film`
+- `Ultra Ceramic Film` (solar rejection 98%)
+- `DOES NOT APPLY` (en mayúsculas)
+
+---
+
+## 14. Fuentes y Referencias
 
 - Design tokens definidos en `frontend/src/app/globals.css` via `@theme` (Tailwind v4 CSS-based config)
 - Tipografía cargada en `frontend/src/app/layout.tsx` con `next/font/google`
@@ -211,10 +325,17 @@ Librería: **lucide-react** (v0.x). Todos los iconos son inline SVGs, color here
 - Login: `frontend/src/app/login/page.tsx`
 - Settings: `frontend/src/app/settings/page.tsx`
 - Modal: `frontend/src/components/Modal.tsx`
+- DateInput: `frontend/src/components/DateInput.tsx`
+- VinScanner: `frontend/src/components/VinScanner.tsx`
 - CarJobList: `frontend/src/features/carJobs/CarJobList.tsx`
 - EmployeeList: `frontend/src/features/employees/EmployeeList.tsx`
 - InvoiceList: `frontend/src/features/invoices/InvoiceList.tsx`
+- AccountingDetail: `frontend/src/app/accounting/[id]/page.tsx`
+- AccountingList: `frontend/src/features/accounting/AccountingList.tsx`
+- Dashboard: `frontend/src/features/dashboard/DashboardView.tsx`
+- SettingsView: `frontend/src/features/settings/SettingsView.tsx`
+- ExpenseEditor: `frontend/src/features/accounting/ExpenseEditor.tsx`
 - Invoice PDF service: `backend/src/modules/invoices/services/invoiceService.ts`
+- Employee PDF service: `backend/src/modules/employees/services/pdfService.ts`
 - Invoice routes: `backend/src/modules/invoices/routes/invoiceRoutes.ts`
-
-
+- Employee routes: `backend/src/modules/employees/routes/employeeRoutes.ts`

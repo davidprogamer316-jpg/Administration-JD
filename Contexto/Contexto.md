@@ -1,6 +1,6 @@
 # Tinting-JD ERP
 
-**Versión:** 0.7.0 (MVP - Contabilidad quincenal + Trabajos + Facturación + Seguridad mejorada + iOS fixes)
+**Versión:** 0.8.0 (MVP - Contabilidad quincenal + Trabajos + Facturación + Gastos fijos + PDFs térmicos + Responsive)
 **Fecha:** Julio 2026
 **Tipo:** Aplicación Web (ERP modular)
 **Tecnología Backend:** Node.js / Express + TypeScript
@@ -11,11 +11,12 @@
 
 ## 1. Descripción General
 
-Sistema ERP web, de uso interno, orientado a llevar la gestión administrativa y financiera de una empresa de tinting automotriz. Actualmente cuenta con tres módulos principales:
+Sistema ERP web, de uso interno, orientado a llevar la gestión administrativa y financiera de una empresa de tinting automotriz. Cuenta con cuatro módulos principales:
 
-1. **Contabilidad Quincenal** — registra ingresos (auto-calculados desde trabajos) y gastos por quincena (1-15 / 16-fin de mes), calcula automáticamente la utilidad y distribuye ganancias entre empleados y jefe según porcentajes configurables.
-2. **Trabajos de Carros** — registra trabajos por vehículo (fecha, VIN, descripción, pago), que alimentan automáticamente los ingresos semanales de contabilidad.
-3. **Facturación** — genera facturas/garantías (PDF estilo ticket POS 80mm) a partir de los trabajos registrados, permitiendo agrupar múltiples servicios en una misma factura.
+1. **Contabilidad Quincenal** — registra ingresos (auto-calculados desde trabajos) y gastos por quincena (1-15 / 16-fin de mes), calcula automáticamente la utilidad y distribuye ganancias entre empleados y jefe según porcentajes configurables. Soporta **gastos fijos automáticos** (se dividen a la mitad por periodo).
+2. **Trabajos de Carros** — registra trabajos por vehículo (fecha, VIN, descripción, pago, tipo de papel) con escáner VIN integrado, que alimentan automáticamente los ingresos de contabilidad. Cada trabajo almacena un snapshot de los porcentajes de empleados activos al momento de crearse.
+3. **Facturación** — genera facturas/garantías (PDF estilo ticket POS 80mm, Courier, 9pt mínimo, todo negro) a partir de los trabajos registrados, permitiendo agrupar múltiples servicios en una misma factura.
+4. **Reportes PDF de empleados** — genera PDFs estilo ticket térmico (mismo diseño que facturas) con el historial de pagos por empleado y mes, mostrando solo fecha + ganancia por trabajo.
 
 El sistema está diseñado para crecer de forma modular (estilo Odoo), agregando en versiones futuras módulos como inventario, etc.
 
@@ -24,7 +25,7 @@ El sistema está diseñado para crecer de forma modular (estilo Odoo), agregando
 ## 2. Alcance
 
 - Aplicación web accesible desde navegador, con backend centralizado y base de datos MongoDB.
-- Arquitectura pensada para múltiples módulos futuros (ERP), aunque en esta fase solo se implementa Contabilidad.
+- Arquitectura pensada para múltiples módulos futuros (ERP).
 - Multiusuario desde el diseño (jefe + empleados), aunque el control de acceso/roles detallado puede definirse en una iteración posterior.
 - No se contempla en esta versión integración con pasarelas de pago ni facturación electrónica.
 
@@ -48,16 +49,18 @@ El sistema está diseñado para crecer de forma modular (estilo Odoo), agregando
 - El sistema debe permitir editar el porcentaje de un empleado y desactivar empleados sin eliminar su historial.
 - El sistema debe validar que la suma de los porcentajes de todos los empleados activos **no supere el 100%** del neto a repartir (el remanente queda automáticamente para el jefe).
 - El sistema debe mostrar en todo momento qué porcentaje le corresponde al jefe (100% - suma de porcentajes de empleados activos).
+- **Los cambios en el porcentaje o estado de un empleado NO recalculan periodos abiertos existentes.** Cada `CarJob` almacena un snapshot de empleados activos con su % al crearse. El recálculo manual (botón "Recalcular" en detalle del periodo) usa esos snapshots.
 
 ### 4.2 Registro Quincenal de Contabilidad
 
 - El sistema debe auto-calcular los ingresos de la quincena sumando todos los pagos (`payment`) de trabajos de carro (`CarJob`) en el rango de la quincena.
 - El sistema permite crear un registro por quincena con:
-  - Rango de fechas (día 1-15 o 16-fin de mes, auto-calculado)
+  - Rango de fechas (día 1-15 o 16-fin de mes, auto-calculado con `Date.UTC` medianoche)
   - Gastos de la quincena, desglosados en **uno o más ítems de gasto**, cada uno con:
     - Descripción (ej. "gasolina", "repuestos", "almuerzos")
     - Monto
-  - El sistema calcula automáticamente el **total de gastos** como suma de todos los ítems.
+  - **Gastos fijos automáticos** (auto-calculados desde `FixedExpense`): se dividen en partes iguales por periodo (mitad del total mensual en cada quincena)
+  - El sistema calcula automáticamente el **total de gastos** como suma de todos los ítems + gastos fijos.
 - El sistema debe permitir agregar, editar y eliminar ítems de gasto dentro de una quincena abierta.
 - El sistema debe impedir crear más de un registro de contabilidad para la misma quincena.
 - El sistema auto-crea una quincena cuando se registra un `CarJob` y no existe quincena para esa fecha.
@@ -69,61 +72,58 @@ El sistema está diseñado para crecer de forma modular (estilo Odoo), agregando
 Por cada quincena registrada, el sistema debe calcular automáticamente, en este orden:
 
 1. **D.D.D.G (Disponible Después De Gastos)**
-   `DDDG = Ingresos Semana - Gastos Semana (suma de ítems de gasto)`
+   `DDDG = Ingresos - Gastos (ítems + gastos fijos)` (mínimo 0)
 
 2. **Ganancia Empresa**
-   `Ganancia Empresa = DDDG * 20%` (porcentaje **fijo** en el sistema, definido en configuración interna del backend, no editable desde la interfaz en esta versión)
+   `Ganancia Empresa = DDDG * 20%` (porcentaje **fijo** en el sistema, definido en configuración interna del backend)
 
 3. **Neto a Repartir**
    `Neto a Repartir = DDDG - Ganancia Empresa`
 
 4. **Reparto por Empleado**
-   Para cada empleado activo:
-   `Monto Empleado = Neto a Repartir * (Porcentaje Empleado / 100)`
+   Para cada empleado activo (usando snapshot del trabajo):
+   `Monto Empleado = Neto a Repartir * (% Empleado / 100)`
 
 5. **Reparto del Jefe**
    `Monto Jefe = Neto a Repartir - Suma de Montos de todos los Empleados`
-   (equivalente a `Neto a Repartir * (100% - Suma de Porcentajes Empleados) / 100`)
 
-Todos estos valores deben recalcularse automáticamente cada vez que se modifique el ingreso, los ítems de gasto, o el porcentaje/cantidad de empleados activos, **siempre y cuando la semana en cuestión sea la semana actual** (ver regla de bloqueo en 4.3.1).
+Todos estos valores deben recalcularse automáticamente cada vez que se modifique el ingreso, los ítems de gasto, los gastos fijos, o se ejecute un recálculo manual.
 
 #### 4.3.1 Cierre Manual de Periodos
 
 - Los periodos se cierran manualmente mediante `PATCH /api/accounting/{id}/close`.
-- Un periodo cerrado no puede editarse (ni gastos, ni ingreso, ni recalcular).
-- Un periodo abierto permite editar gastos; el ingreso siempre se recalcula desde `CarJob`.
+- Un periodo cerrado **bloquea todas las mutaciones**: no se pueden editar gastos, crear/editar/eliminar trabajos, ni recalcular.
+- Un periodo abierto permite editar gastos y recalcular manualmente; el ingreso siempre se recalcula desde `CarJob`.
 - El sistema no forza cierre automático al cambiar de quincena.
-- Si un empleado cambia su porcentaje o se activa/desactiva, ese cambio **solo aplica a periodos abiertos** al recalcular.
+- **Al eliminar un trabajo** en un periodo abierto, si el periodo queda con income=0, expenseItems vacío y fixedExpenses vacío, se elimina automáticamente.
+
+#### 4.3.2 Gastos Fijos Automáticos
+
+- Los gastos fijos se gestionan desde la página de Configuración (`/settings`).
+- Cada gasto fijo tiene: nombre, monto mensual.
+- Al recalcular un periodo, se toma el monto mensual del gasto fijo y se divide en 2 (mitad para cada quincena del mes).
+- Los gastos fijos se almacenan en `period.fixedExpenses[]` como subdocumentos (name, amount).
+- Se muestran como sección de solo lectura en la página de detalle del periodo.
 
 ### 4.4 Módulo de Trabajos de Carros
 
 - El sistema debe permitir registrar trabajos por vehículo con:
   - Fecha del trabajo
-  - VIN (número de identificación vehicular)
+  - VIN (número de identificación vehicular) — escaneable con cámara
   - Descripción del trabajo realizado
   - Pago (monto)
+  - **Tipo de papel** (multi-select): "Premium Film", "Ceramic Film", "Ultra Ceramic Film", "DOES NOT APPLY"
 - El sistema debe mostrar un listado con filtros por rango de fechas y búsqueda por VIN (búsqueda parcial, case-insensitive).
 - El sistema debe permitir editar y eliminar trabajos.
-- Al crear/editar/eliminar un trabajo, se recalcula automáticamente el ingreso y todos los valores derivados (DDDG, ganancia, neto, reparto) de la quincena correspondiente.
-- Si no existe una quincena para la fecha del trabajo, se crea automáticamente (1-15 o 16-fin de mes).
-- Los trabajos de la quincena se muestran en el detalle de la quincena de contabilidad.
-- Al hacer clic en cualquier celda de una fila de trabajo se abre un modal con los detalles completos (fecha, VIN, descripción, pago, estado), sin necesidad de navegar a otra página.
-- Al hacer clic en el nombre del periodo en la tabla de contabilidad, se navega a una página de detalle (`/accounting/[id]`) que muestra: tarjetas resumen (ingresos, gastos, DDDG, ganancia, neto, cada empleado, jefe), la lista de trabajos del periodo y el editor de gastos.
-- El botón "Recalcular" manual fue eliminado de la tabla, ya que el recálculo ocurre automáticamente al crear/editar/eliminar trabajos o al modificar gastos/empleados.
-
-### 4.6 Vista de Contabilidad Quincenal
-
-- El sistema debe mostrar una tabla/listado con todos los periodos registrados, incluyendo las columnas:
-  - Periodo (número 1 o 2 + rango de fechas)
-  - Ingresos
-  - Gastos
-  - D.D.D.G
-  - Ganancia Empresa
-  - Neto a Repartir
-  - Monto por cada Empleado (columna dinámica por empleado activo)
-  - Monto Jefe
-- El sistema debe permitir filtrar por rango de fechas (ej. por mes, por trimestre, por año).
-- El sistema debe mostrar totales acumulados (ingresos, gastos, ganancia empresa, neto repartido, total por empleado, total jefe) para el rango filtrado.
+- Al crear/editar/eliminar un trabajo, se recalcula automáticamente el ingreso y todos los valores derivados del periodo correspondiente.
+- Si no existe una quincena para la fecha del trabajo, se crea automáticamente.
+- Los trabajos de la quincena se muestran en el detalle de la quincena de contabilidad (sección colapsable).
+- Al hacer clic en cualquier celda de una fila de trabajo se abre un modal con los detalles completos.
+- Al hacer clic en el nombre del periodo en la tabla de contabilidad, se navega a una página de detalle (`/accounting/[id]`) que muestra: tarjetas resumen, trabajos del periodo (colapsable), editor de gastos, gastos fijos (solo lectura), y ganancias empleados por trabajo (colapsable con acordeón por empleado).
+- **Botón "Recalcular"** en la página de detalle para forzar recálculo manual del periodo.
+- **Snapshot de porcentajes:** cada `CarJob` almacena `employeeShares[]` con los empleados activos y sus porcentajes al momento de creación. El recálculo usa estos snapshots, no los datos actuales del empleado.
+- **Escáner VIN:** foto-based. Abre la cámara trasera via `getUserMedia`, el usuario ve el video en vivo, presiona "Tomar foto", captura un frame y lo decodifica con `@zxing/library`. No hay escaneo continuo.
+- **Submit button deshabilitado** mientras la petición está en curso para evitar trabajos duplicados.
 
 ### 4.5 Resumen y Dashboard
 
@@ -132,52 +132,81 @@ Todos estos valores deben recalcularse automáticamente cada vez que se modifiqu
   - Ganancia acumulada de la empresa
   - Total repartido a empleados (general y por empleado individual)
   - Total acumulado del jefe
-  - Gráfico de evolución semanal de ingresos vs. gastos vs. ganancia (línea o barras)
-  - Filtro por rango de fechas con actualización automática al cambiar los valores del calendario (sin necesidad de botón "Filtrar")
+  - Gráfico de evolución semanal de ingresos vs. gastos vs. ganancia
+  - **Filtro por rango de fechas** — el dashboard carga por defecto el mes actual. El filtro solo se activa al hacer clic en "Filtrar" (no al cambiar las fechas).
+  - `useEffect` **NO** depende de `startDate`/`endDate` para evitar recargas prematuras.
+
+### 4.6 Vista de Contabilidad Quincenal
+
+- El sistema debe mostrar una tabla/listado con todos los periodos registrados, incluyendo las columnas:
+  - Periodo (número 1 o 2 + rango de fechas) — enlace a página de detalle
+  - Ingresos
+  - Gastos
+  - D.D.D.G
+  - Ganancia Empresa
+  - Neto a Repartir
+  - Monto por cada Empleado (columna dinámica por empleado activo)
+  - Monto Jefe
+- **Columnas responsive:** DDDG y Ganancia ocultas en `<sm`, columnas de empleados y Jefe ocultas en `<lg`.
+- El sistema debe permitir filtrar por rango de fechas.
+- El sistema debe mostrar totales acumulados para el rango filtrado.
 
 ### 4.7 Exportación a Excel
 
-- El sistema debe permitir exportar la contabilidad quincenal (con filtro por fechas) en formato Excel (`.xlsx`) con:
+- El sistema debe permitir exportar la contabilidad quincenal en formato Excel (`.xlsx`) con:
   - Una fila por periodo con todas las columnas
   - Fila de totales al final
   - Encabezados con color de marca, filas alternadas, formato moneda
   - Segunda hoja "Ganancias empleados" con desglose por empleado
-- El sistema debe permitir exportar trabajos de carro (con filtro por fechas y VIN) a Excel con diseño similar.
+- Exportación de trabajos de carro a Excel con filtro por fechas y VIN.
 - Formato de moneda: `$#,##0.00`.
 
-### 4.7 Autenticación y Seguridad (Administrador)
+### 4.8 Autenticación y Seguridad
 
-- El sistema debe estar protegido mediante **login obligatorio**, ya que se desplegará en internet y será de uso exclusivo del administrador (jefe/dueño de la empresa).
-- El sistema debe contar con una pantalla de **registro inicial** para crear la cuenta del administrador (correo electrónico y contraseña).
-  - Para el MVP se contempla un único usuario administrador. El registro puede limitarse a permitir la creación de una sola cuenta (o protegerse con una clave de invitación/registro), para evitar que cualquier persona en internet pueda crear una cuenta nueva.
-- El sistema debe contar con una pantalla de **login** (correo y contraseña) que dé acceso al resto de la aplicación.
-- Ninguna ruta de la aplicación (frontend) ni endpoint de la API (backend) debe ser accesible sin sesión válida, excepto las rutas de login y registro.
-- Las contraseñas deben almacenarse de forma segura (hash con algoritmo robusto, ej. BCrypt), nunca en texto plano.
-- El sistema debe permitir cerrar sesión (logout).
-- El sistema debe permitir recuperar el acceso ante olvido de contraseña (al menos un mecanismo básico, ej. restablecimiento por correo electrónico), a definir en detalle según el proveedor de correo disponible.
-- El sistema debe proteger las contraseñas y tokens contra ataques comunes (fuerza bruta, inyección, XSS, CSRF), aplicando las prácticas estándar de Spring Security.
-- El acceso a la API debe estar protegido con un mecanismo de sesión basado en **JWT** (token con expiración), enviado en cada petición desde el frontend.
-- La conexión entre frontend y backend, y el sitio en general, debe servirse mediante **HTTPS** en producción.
+- **Login obligatorio** con JWT + bcrypt.
+- **Sin registro público** — la ruta `/register` fue eliminada. Solo cuentas existentes pueden iniciar sesión.
+- **Bloqueo por fuerza bruta:** 5 intentos fallidos bloquean la cuenta por 30 minutos. HTTP 423 LOCKED.
+- **Middleware acepta `token` query param** como fallback para abrir PDFs en nueva pestaña (no envía Authorization header).
+- **CORS:** soporta múltiples orígenes (variable `CORS_ORIGINS` separada por comas) y Vercel preview subdomains via `CORS_ALLOW_VERCEL_PREVIEWS`.
+- Todas las rutas protegidas excepto `/auth/login`.
+- Contraseñas con hash bcrypt, nunca en texto plano.
 
-### 4.8 Módulo de Facturación
+### 4.9 Módulo de Facturación
 
-- El sistema debe permitir generar facturas/garantías a partir de trabajos de carro (`CarJob`) registrados.
-- El sistema debe permitir seleccionar **uno o varios trabajos** al crear una factura, agrupando múltiples servicios para un mismo cliente.
-- El sistema debe auto-generar el número de factura consecutivo (`FAC-0001`, `FAC-0002`, ...).
-- El sistema debe calcular el total automáticamente como suma de los valores de los servicios incluidos.
-- El PDF de la factura debe tener estilo **ticket POS 80mm** con:
-  - Encabezado centrado: nombre de la empresa, NIT, dirección, teléfono
-  - Número de factura grande en color saffron
-  - Tabla de servicios con wrap de descripción larga y precios alineados a la derecha
-  - Total grande y resaltado
-  - Texto de garantía en cursiva
+- Generación de facturas/garantías desde uno o varios `CarJob`.
+- Auto-numeración consecutiva (`FAC-0001`, `FAC-0002`, ...).
+- PDF estilo **ticket POS 80mm** (227pt ancho, luego ajustado a 204pt):
+  - Fuente Courier / CourierPrime (si existe la fuente TTF empaquetada)
+  - Todo **Helvetica-Bold** (Courier), 9pt mínimo
+  - **Todo negro** (#000), sin colores, sin grises
+  - Logo opcional (centrado, 200px, escala de grises via `sharp`)
+  - **Sin QR** (removido)
+  - Teléfono: 786 793 4440
+  - Tabla de servicios: solo fecha + monto por ítem (sin descripción ni especificaciones de papel)
+  - Total grande y prominente
+  - Texto de garantía en inglés, simplificado
   - Footer con fecha de generación
-  - Todo en inglés
-- El sistema debe permitir descargar el PDF de la factura desde la página de facturación y desde el modal de detalle.
-- El sistema debe permitir eliminar facturas.
-- El sistema debe mostrar el detalle de la factura en un modal al hacer clic en la fila.
+- **Vista inline:** botón "Ver factura" abre PDF en nueva pestaña con token en URL (`?token=...`).
+- **Filtro por nombre de cliente** (búsqueda case-insensitive) en el listado de facturas.
+- Permite eliminar facturas.
 
-### 4.9 Módulos Futuros (fuera de alcance, solo referencia arquitectónica)
+### 4.10 Reportes PDF de Empleados
+
+- Desde la página de empleados, se puede descargar un PDF con el historial de pagos de un empleado en un mes específico.
+- **Formato ticket térmico 80mm** (204pt ancho, mismo diseño que las facturas):
+  - Fuente Courier / CourierPrime
+  - Todo #000, sin logo, sin QR, sin tagline, sin teléfono
+  - Encabezado: "Windows Tinting" + "JD" (dos líneas)
+  - "Historial de pagos — {nombre empleado}"
+  - Mes seleccionado
+  - Por periodo quincenal: tabla con FECHA | GANANCIA
+  - La ganancia se calcula como `job.payment / totalIncome * employeeShare.amount`
+  - Total por periodo y total general del mes
+  - Footer: "Generado por Tinting-JD"
+- **Vista inline y descarga:** icono de ojo (ver) + icono de descarga. El PDF inline abre en nueva pestaña con token en URL.
+- Selector de mes/año en modal antes de generar.
+
+### 4.11 Módulos Futuros (fuera de alcance, solo referencia arquitectónica)
 
 - Módulos ERP a futuro: inventario, clientes/proveedores, roles y permisos avanzados.
 - El diseño de la arquitectura (capas, dominios separados por módulo) debe facilitar agregar estos módulos sin reescribir los existentes.
@@ -188,78 +217,66 @@ Todos estos valores deben recalcularse automáticamente cada vez que se modifiqu
 
 ### 5.1 Tecnología
 
-- **Backend / Lógica de negocio:** **Node.js** con **Express + TypeScript**.
+- **Backend:** Node.js con Express + TypeScript, ESM (`module: "esnext"`, `"type": "module"`).
 - **Persistencia:** Mongoose (ODM para MongoDB).
-- **Base de datos:** MongoDB (puede ser local en desarrollo, y MongoDB Atlas u otro servicio administrado en producción).
-- **Frontend:** Aplicación **React 19** con TypeScript, consumiendo la API REST del backend.
-- **Comunicación Frontend-Backend:** API REST (JSON), con posibilidad de evolucionar a GraphQL si el ERP crece en complejidad.
-- **Autenticación (futura/inicial):** JWT, con posibilidad de roles (Jefe / Empleado) desde etapas tempranas si se decide incluir control de acceso ya en el MVP.
-- **Gestor de dependencias:** npm o pnpm (monorepo o carpetas separadas).
+- **Base de datos:** MongoDB Atlas (conexión directa a shards, no SRV — para evitar fallos de resolución DNS).
+- **Frontend:** Next.js 16.2.9 + React 19 + TypeScript + Tailwind CSS v4.
+- **Autenticación:** JWT + bcrypt + middleware Express.
+- **Gestor de dependencias:** npm (monorepo con carpetas backend/ y frontend/).
 
 ### 5.1.1 Despliegue
 
-- **Backend (Node.js / Express):** desplegado en **Render** (como servicio web Node), conectado a la base de datos MongoDB (ej. MongoDB Atlas).
-- **Frontend (Next.js / React):** desplegado en **Vercel**.
-- Al estar frontend y backend en dominios/servicios distintos, el backend debe configurar correctamente **CORS** para aceptar peticiones únicamente desde el dominio del frontend en Vercel.
-- Las variables sensibles (cadena de conexión a MongoDB, secreto para firmar JWT, credenciales) deben manejarse mediante variables de entorno en Render y Vercel, nunca hardcodeadas en el repositorio.
-- Se debe documentar en el `README.md` el proceso de configuración de variables de entorno y despliegue en ambas plataformas.
+- **Backend:** Render (Node.js service, puerto interno 4000). `.npmrc` con `include=dev` para instalar devDependencies. tsconfig con `"types": ["node"]`.
+- **Frontend:** Vercel.
+- **CORS:** configurado para aceptar orígenes en `CORS_ORIGIN`/`CORS_ORIGINS` (coma-separados) y Vercel preview subdomains.
+- **Variables de entorno:** `MONGODB_URI` (shards directos), `JWT_SECRET`, `NEXT_PUBLIC_API_URL`, etc.
 
 ### 5.2 Arquitectura
 
-- Arquitectura modular pensada para ERP, separando cada dominio funcional (Contabilidad, y en el futuro Vehículos, Inventario, etc.) en sus propios módulos/dominios dentro del backend.
-- Backend en capas:
-  - **Capa de rutas (API):** Definición de endpoints Express con enrutadores modulares (`express.Router()`)
-  - **Capa de controladores:** Manejo de request/response, validación de entrada
-  - **Capa de servicio:** Lógica de negocio desacoplada de la capa web (cálculo de DDDG, ganancia, reparto, validaciones de porcentajes)
-  - **Capa de repositorio:** Acceso a datos mediante Mongoose Models
-  - **Capa de modelo:** Schemas de Mongoose (AccountingPeriod, Employee, ExpenseItem)
-- Frontend organizado por features/módulos (carpeta `accounting/`, y futuras carpetas `vehicles/`, etc.), con componentes reutilizables de UI tipo ERP (tablas, dashboards, formularios).
-- Separación estricta de responsabilidades (SRP) y aplicación de principios SOLID en el backend.
-- Diseño preparado para crecer en número de módulos sin acoplar la lógica de Contabilidad con las futuras funcionalidades.
+- Arquitectura modular: cada dominio funcional en su propio módulo dentro del backend.
+- Backend en capas: rutas → controladores → servicios → modelos.
+- Frontend organizado por features (`features/accounting/`, `features/carJobs/`, etc.), componentes reutilizables.
+- Separación estricta de responsabilidades (SRP).
 
 ### 5.3 Persistencia de Datos
 
-- Los datos se almacenan en colecciones de MongoDB, por ejemplo:
-  - `employees`
-  - `weekly_accounting`
-  - `expense_items` (si se decide modelar los gastos como ítems independientes en vez de un solo valor)
-- Se debe definir una estrategia de respaldo (backup) de la base de datos, acorde al entorno donde se despliegue (local, servidor propio o nube).
+Colecciones de MongoDB:
+- `employees`
+- `accounting_periods` (con subdocumentos embebidos: `expenseItems`, `employeeDistribution`, `fixedExpenses`)
+- `carjobs`
+- `invoices`
+- `fixedexpenses`
+- `admin_users`
 
 ### 5.4 Usabilidad
 
-- La interfaz debe ser intuitiva, en español, con estilo visual tipo panel administrativo/ERP (similar a Odoo: menú lateral de módulos, tablas, dashboards).
-- Los valores monetarios deben mostrarse con formato de miles (ej. $30.000,00), moneda colombiana.
-- Las fechas deben mostrarse en formato `DD/MM/YYYY`.
-- El sistema debe confirmar antes de eliminar o modificar registros que afecten cálculos ya cerrados.
-- El sistema debe mostrar mensajes de validación claros (ej. si la suma de porcentajes de empleados supera el 100%).
+- Interfaz en español, estilo ERP (sidebar ODOO-style, tablas, dashboards).
+- Valores monetarios con formato colombiano (miles y decimales).
+- Fechas en formato `DD/MM/YYYY`.
+- **Responsive:** sidebar con hamburger toggle, `overflow-x-auto` para tablas, columnas ocultas en pantallas pequeñas.
+- Confirmación antes de eliminar/cerrar registros críticos.
+- **DateInput** componente custom para iOS (placeholder con `<span>` superpuesto porque Safari no muestra placeholder nativo en `<input type="date">`).
 
 ### 5.5 Rendimiento
 
-- Las consultas del listado semanal y dashboard deben responder en menos de 2 segundos con varios años de historial.
-- La aplicación debe soportar el crecimiento futuro en número de módulos sin degradar el rendimiento del módulo de Contabilidad.
+- Consultas y dashboard deben responder en menos de 2 segundos con historial de varios años.
 
 ### 5.6 Seguridad
 
-- El sistema **requiere autenticación obligatoria** desde el MVP, ya que estará desplegado en internet y debe estar protegido de accesos no autorizados.
-- Modelo de un único rol: **Administrador** (el jefe), responsable de todo el manejo del software. No se contemplan roles adicionales (ej. empleados con acceso propio) en esta versión.
-- Autenticación basada en **JWT + bcrypt + middleware Express**:
-  - Login con correo y contraseña.
-  - Token JWT con expiración, renovable o que obligue a re-login al expirar.
-  - Middleware `authenticateToken` en Express que valida el JWT en cada ruta protegida.
-  - Todas las rutas de la API (excepto `/auth/login` y `/auth/register`) deben validar el token.
-- Las contraseñas deben almacenarse con hash (bcrypt) y nunca en texto plano ni en logs.
-- El registro de administrador debe estar restringido (ej. solo se permite un usuario administrador, o el registro requiere una clave/código de invitación), para que no quede expuesto como un registro público abierto en internet.
-- El despliegue en producción debe usar **HTTPS** obligatoriamente.
-- Los endpoints de la API deben validar los datos de entrada (porcentajes, montos no negativos, semanas no duplicadas, credenciales bien formadas, etc.) para mitigar inyección y datos corruptos.
-- Se debe aplicar protección estándar contra CSRF, XSS y fuerza bruta en el login (ej. límite de intentos fallidos).
+- Autenticación JWT obligatoria en todas las rutas excepto `/auth/login`.
+- Middleware acepta `token` query param para PDFs en nueva pestaña.
+- Contraseñas con hash bcrypt.
+- **Bloqueo por fuerza bruta:** 5 intentos / 30 min, HTTP 423.
+- Sin registro público (ruta `/register` eliminada).
+- HTTPS en producción (Render + Vercel).
+- Validación de datos de entrada en todos los endpoints.
 
 ### 5.7 Mantenibilidad
 
-- El código backend debe seguir convenciones estándar de TypeScript/Node (camelCase, PascalCase para interfaces/tipos, organización por módulos).
-- El código frontend debe seguir las convenciones del ecosistema React/Next.js (componentes, hooks, organización por features).
-- Toda lógica de negocio del backend (cálculo de DDDG, ganancia, reparto) debe tener pruebas unitarias (Vitest o Jest).
-- Uso de inyección de dependencias en el backend para facilitar pruebas y mantenimiento.
-- El proyecto debe contar con un archivo `README.md` con instrucciones de instalación, configuración de MongoDB y ejecución de backend y frontend.
+- TypeScript estricto en backend y frontend.
+- Módulos separados por dominio funcional.
+- Toda lógica de negocio en servicios, desacoplada de controladores.
+- `AGENTS.md` documenta comandos de lint/typecheck y convenciones.
 
 ---
 
@@ -282,7 +299,8 @@ Todos estos valores deben recalcularse automáticamente cada vez que se modifiqu
 | periodNumber | Integer | Número de quincena (1 = 1-15, 2 = 16-fin) |
 | income | BigDecimal | Ingresos del periodo (auto-calculado desde CarJobs) |
 | expenseItems | List<ExpenseItem> | Ítems de gasto del periodo (descripción + monto) |
-| expenses | BigDecimal | Calculado: suma de todos los expenseItems |
+| fixedExpenses | List<FixedExpenseItem> | Gastos fijos automáticos (nombre + monto mitad) |
+| expenses | BigDecimal | Calculado: suma de expenseItems + fixedExpenses |
 | dddg | BigDecimal | Calculado: Ingresos - Gastos (mínimo 0) |
 | companyProfit | BigDecimal | Calculado: DDDG * 20% |
 | netToDistribute | BigDecimal | Calculado: DDDG - Ganancia Empresa |
@@ -294,15 +312,21 @@ Todos estos valores deben recalcularse automáticamente cada vez que se modifiqu
 | Campo | Tipo | Descripción |
 |---|---|---|
 | employeeId | String | Referencia al empleado |
-| employeeName | String | Nombre (copia histórica, para no depender de cambios futuros del empleado) |
+| employeeName | String | Nombre (copia histórica) |
 | percentageApplied | BigDecimal | Porcentaje aplicado en ese momento (copia histórica) |
 | amount | BigDecimal | Monto calculado para ese empleado en esa semana |
 
-### Ítem de Gasto (ExpenseItem) — subdocumento embebido dentro de WeeklyAccounting
+### Ítem de Gasto Fijo (FixedExpenseItem) — subdocumento embebido
 | Campo | Tipo | Descripción |
 |---|---|---|
-| id | String | Identificador único del ítem (dentro de la semana) |
-| description | String | Descripción del gasto (ej. "gasolina", "repuestos") |
+| name | String | Nombre del gasto fijo |
+| amount | BigDecimal | Monto del periodo (mitad del mensual) |
+
+### Ítem de Gasto (ExpenseItem) — subdocumento embebido
+| Campo | Tipo | Descripción |
+|---|---|---|
+| id | String | Identificador único del ítem |
+| description | String | Descripción del gasto |
 | amount | BigDecimal | Monto del gasto |
 
 ### Administrador (AdminUser)
@@ -314,74 +338,89 @@ Todos estos valores deben recalcularse automáticamente cada vez que se modifiqu
 | fullName | String | Nombre del administrador |
 | createdAt | LocalDateTime | Fecha de creación de la cuenta |
 | lastLogin | LocalDateTime | Fecha del último inicio de sesión |
-| failedLoginAttempts | Integer | Intentos fallidos consecutivos de login (para bloqueo por fuerza bruta) |
-| lockedUntil | LocalDateTime (nullable) | Fecha/hora hasta la cual la cuenta está bloqueada; null = no bloqueada |
+| failedLoginAttempts | Integer | Intentos fallidos consecutivos |
+| lockedUntil | LocalDateTime (nullable) | Fecha/hora hasta bloqueo; null = no bloqueado |
 
 ### Factura (Invoice)
 | Campo | Tipo | Descripción |
 |---|---|---|
 | id | String (ObjectId) | Identificador único |
-| invoiceNumber | String | Número auto-generado (`FAC-0001`, `FAC-0002`, ...) |
+| invoiceNumber | String | Número auto-generado (`FAC-0001`) |
 | clientName | String | Nombre del cliente |
 | date | LocalDate | Fecha de emisión |
-| items | List<InvoiceItem> | Servicios incluidos (descripción + monto + carJobId opcional) |
+| items | List<InvoiceItem> | Servicios incluidos |
 | total | BigDecimal | Suma de todos los items |
 | notes | String | Notas adicionales (opcional) |
 
 ### Ítem de Factura (InvoiceItem) — subdocumento embebido
 | Campo | Tipo | Descripción |
 |---|---|---|
-| description | String | Descripción del servicio (copia desde el CarJob) |
-| amount | BigDecimal | Valor del servicio (copia desde CarJob.payment) |
-| carJobId | String (ObjectId, opcional) | Referencia al CarJob que originó el ítem |
+| description | String | Descripción del servicio |
+| amount | BigDecimal | Valor del servicio |
+| carJobId | String (opcional) | Referencia al CarJob que originó el ítem |
 
 ### Trabajo de Carro (CarJob)
 | Campo | Tipo | Descripción |
 |---|---|---|
 | id | String (ObjectId) | Identificador único |
 | date | LocalDate | Fecha del trabajo |
-| vin | String | VIN del vehículo (escaneable con cámara Code 128/Code 39) |
+| vin | String | VIN del vehículo |
 | description | String | Descripción del trabajo realizado |
 | payment | BigDecimal | Monto cobrado por el trabajo |
+| paperTypes | List<String> | Tipos de papel aplicados |
+| employeeShares | List<EmployeeJobShare> | Snapshot de empleados activos + % al crearse |
 | closed | Boolean | Indica si el periodo contable al que pertenece está cerrado |
+
+### EmployeeJobShare — subdocumento embebido en CarJob
+| Campo | Tipo | Descripción |
+|---|---|---|
+| employeeId | String | Referencia al empleado |
+| employeeName | String | Nombre (copia histórica) |
+| percentage | BigDecimal | Porcentaje del empleado al momento de crear el trabajo |
+
+### Gasto Fijo (FixedExpense) — documento independiente
+| Campo | Tipo | Descripción |
+|---|---|---|
+| id | String (ObjectId) | Identificador único |
+| name | String | Nombre del gasto fijo |
+| amount | BigDecimal | Monto mensual (se divide en 2 por periodo) |
 
 ---
 
 ## 7. Reglas de Negocio
 
-- `DDDG = Ingresos Semana - Gastos Semana` (si el resultado es negativo, se trunca a 0).
+- `DDDG = income - expenses` (mínimo 0).
 - `Ganancia Empresa = DDDG * 20%` (fijo en código como `COMPANY_RATE = 0.20`), solo si `DDDG > 0`.
 - `Neto a Repartir = DDDG - Ganancia Empresa`.
-- `Monto Empleado = Neto a Repartir * (% del Empleado / 100)`, calculado individualmente por cada empleado activo.
-- `Monto Jefe = Neto a Repartir - Suma de Montos de Empleados` (el jefe recibe siempre el remanente).
+- `Monto Empleado = Neto a Repartir * (% del Empleado / 100)`, calculado individualmente por cada empleado activo usando snapshot del trabajo.
+- `Monto Jefe = Neto a Repartir - Suma de Montos de Empleados`.
 - La suma de los porcentajes de todos los empleados activos no puede superar el 100%.
-- Un periodo contable es quincenal: del día 1 al 15 (quincena 1) o del 16 al último día del mes (quincena 2), auto-calculado con `accountingService.quincenaStart()` / `quincenaEnd()`.
+- Periodo quincenal: día 1-15 (Q1) o 16-fin de mes (Q2), calculado con `Date.UTC` medianoche.
 - No se permite más de un registro de contabilidad por quincena.
-- **El ingreso se calcula automáticamente** sumando los `payment` de todos los `CarJob` cuya fecha caiga dentro del rango de la quincena. No se ingresa manualmente.
-- **Un periodo se auto-crea** cuando se registra un trabajo (`CarJob`) cuya fecha no pertenece a ninguna quincena existente.
-- **Los periodos se pueden cerrar manualmente** (PATCH `…/close`). Una vez cerrado no se puede modificar.
-- **Solo los gastos son editables** en un periodo abierto; las fechas y el ingreso siempre son de solo lectura.
-- Los cambios en el porcentaje o estado (activo/inactivo) de un empleado **solo afectan a trabajos nuevos**. Cada `CarJob` almacena un snapshot de los porcentajes al momento de crearse. Los trabajos ya existentes mantienen los porcentajes con los que fueron creados.
-- Al desactivar un empleado, se conserva su historial de reparto en periodos anteriores (los `EmployeeShare` ya guardados no se modifican).
-- El porcentaje aplicado a cada empleado se almacena de forma histórica en cada `EmployeeShare`, de modo que cambios futuros en el porcentaje del empleado no alteran periodos ya calculados.
-- El sistema solo permite el acceso al administrador autenticado; ninguna funcionalidad de contabilidad (ver, crear, editar, exportar) es accesible sin sesión válida.
-- El registro de nuevas cuentas de administrador está restringido (no es un registro público abierto), dado que la aplicación estará en internet.
-- **Límite de intentos de login (fuerza bruta):** tras 5 intentos fallidos de login, la cuenta se bloquea por 30 minutos (configurable vía `login.max-attempts` y `login.lock-duration-minutes`). El endpoint devuelve HTTP 423 LOCKED con `locked: true`. Se puede desbloquear manualmente desde la página de configuración (`/settings`).
-- **Al cerrar un periodo contable**, todos los `CarJob` cuya fecha caiga dentro de ese rango se marcan automáticamente con `closed=true`. Una vez cerrado, no se pueden crear, editar ni eliminar trabajos en ese periodo.
-- **Escáner VIN:** durante la creación de un `CarJob`, se puede escanear el código de barras del VIN (Code 128/Code 39). Abre la cámara trasera, muestra el video en vivo, el usuario presiona "Tomar foto", captura un frame y lo decodifica con `@zxing/library`. El VIN escaneado se rellena automáticamente en el campo correspondiente.
-- **PDF de pagos por empleado:** desde la página de empleados se puede descargar un PDF con el historial de pagos de un empleado en un mes específico. Al hacer clic en el icono de PDF se abre un modal donde se selecciona mes y año antes de descargar. El PDF muestra los periodos quincenales, los trabajos del periodo y la ganancia proporcional del empleado por cada trabajo. La ganancia se calcula como `job.payment / totalIncome * employeeAmount`. No se muestra el precio del servicio (solo la ganancia del empleado).
-- **Generación de facturas desde trabajos:** al hacer clic en "Generar factura" en el modal de detalle de un trabajo (`CarJob`), se abre un modal para ingresar el nombre del cliente y se crea la factura usando los datos del trabajo (descripción, monto, carJobId).
-- **Múltiples servicios por factura:** desde el formulario de creación de facturas se pueden seleccionar varios trabajos mediante checkboxes. Cada trabajo se convierte en un ítem de la factura.
-- **Auto-numeración de facturas:** el número de factura se genera como `FAC-XXXX` donde XXXX es el consecutivo (count de documentos + 1), padding a 4 dígitos.
-- **El total de la factura** se calcula como suma de los `amount` de todos sus items al momento de crear la factura, y se almacena como campo calculado.
-- **PDF sin logo:** el PDF de factura incluye un espacio para logo en la parte superior central. Si existe `backend/assets/logo.png` se muestra; si no, se omite sin error.
+- **El ingreso se calcula automáticamente** sumando los `payment` de todos los `CarJob` en el rango.
+- **Un periodo se auto-crea** al registrar un `CarJob` si no existe quincena para esa fecha.
+- **Los periodos se cierran manualmente.** Una vez cerrado: no se puede modificar nada.
+- **Solo los gastos (expenseItems) son editables** en un periodo abierto.
+- **Los cambios en % de empleado NO afectan periodos existentes.** Cada `CarJob` almacena snapshot de `employeeShares`. El recálculo manual agrega usando snapshots.
+- **Gastos fijos:** se dividen en 2 automáticamente (mitad por periodo). Se cargan desde la colección `FixedExpense`.
+- **Al eliminar un trabajo** en periodo abierto, si el periodo queda vacío (income=0, sin expenseItems, sin fixedExpenses), se elimina automáticamente.
+- **El sistema solo permite acceso al administrador autenticado.** Sin auto-registro.
+- **Límite de intentos de login:** 5 fallidos → bloqueo 30 min → HTTP 423.
+- **Al cerrar un periodo,** los `CarJob` dentro del rango se marcan `closed=true`.
+- **Escáner VIN foto-based:** getUserMedia → video en vivo → "Tomar foto" → captura frame → decode con `@zxing/library`. No continuo.
+- **PDF factura:** Courier/CourierPrime, 204pt ancho, todo #000, 9pt mínimo, sin QR, sin logo (opcional), teléfono 786 793 4440.
+- **PDF empleado:** mismo formato térmico, sin logo/sin QR/sin teléfono, solo fecha + ganancia.
+- **Dashboard:** carga mes actual por defecto, filtra solo al hacer clic en "Filtrar".
+- **Submit de CarJob** se deshabilita mientras la petición está en curso para evitar duplicados.
+- **Paper types:** multi-select con opciones "Premium Film", "Ceramic Film", "Ultra Ceramic Film", "DOES NOT APPLY".
+- **`toLocaleDateString`** usa `timeZone: 'UTC'` en toda la app para consistencia.
 
 ---
 
 ## 8. Casos de Uso Principales
 
 | ID | Caso de Uso | Actor |
-|---|---|---|---|
+|---|---|---|
 | CU-01 | Registrar nuevo empleado y su porcentaje | Jefe |
 | CU-02 | Editar porcentaje o estado de un empleado | Jefe |
 | CU-03 | Ver historial de pagos por empleado | Jefe |
@@ -389,114 +428,126 @@ Todos estos valores deben recalcularse automáticamente cada vez que se modifiqu
 | CU-05 | Ver listado de contabilidad quincenal con totales | Jefe |
 | CU-06 | Ver dashboard general (gráficos, totales por período) | Jefe |
 | CU-07 | Exportar reporte de contabilidad en Excel | Jefe |
-| CU-08 | Registrar trabajo de carro (fecha, VIN, descripción, pago) | Jefe |
+| CU-08 | Registrar trabajo de carro (fecha, VIN, descripción, pago, papel) | Jefe |
 | CU-09 | Editar trabajo de carro existente | Jefe |
 | CU-10 | Eliminar trabajo de carro | Jefe |
-| CU-11 | Ver trabajos de carro con filtros por fechas | Jefe |
+| CU-11 | Ver trabajos de carro con filtros por fechas y VIN | Jefe |
 | CU-12 | Ver trabajos de la quincena en el detalle de contabilidad | Jefe |
 | CU-13 | Exportar trabajos de carro a Excel | Jefe |
-| CU-14 | Editar gastos de una semana abierta | Jefe |
-| CU-15 | Cerrar semana (bloquear edición) | Jefe |
+| CU-14 | Editar gastos de un periodo abierto | Jefe |
+| CU-15 | Cerrar periodo (bloquear edición) | Jefe |
 | CU-16 | Validar que la suma de porcentajes de empleados no supere el 100% | Sistema |
-| CU-17 | Registrar cuenta de administrador (inicial / restringida) | Administrador |
-| CU-18 | Iniciar sesión (login) | Administrador |
-| CU-19 | Cerrar sesión (logout) | Administrador |
-| CU-20 | Bloquear cuenta por intentos fallidos de login | Sistema |
-| CU-21 | Desbloquear cuenta manualmente desde configuración | Administrador |
-| CU-22 | Cambiar contraseña desde configuración | Administrador |
-| CU-23 | Ver información de cuenta (email, nombre, estado bloqueo) | Administrador |
-| CU-24 | Escanear VIN con cámara al crear trabajo de carro | Administrador |
-| CU-25 | Cerrar trabajos de carro automáticamente al cerrar periodo | Sistema |
-| CU-26 | Descargar PDF de pagos por empleado con ganancia proporcional | Administrador |
-| CU-27 | Ver historial de pagos por empleado con selector de mes/año y detalle expandible por periodo | Administrador |
-| CU-28 | Ver detalle completo de un periodo contable (trabajos, gastos, resumen) desde la tabla | Administrador |
-| CU-29 | Ver detalle completo de un trabajo de carro en modal | Administrador |
-| CU-30 | Buscar trabajos por VIN en el listado | Administrador |
-| CU-31 | Filtrar dashboard por rango de fechas con actualización automática | Administrador |
-| CU-32 | Descargar PDF de empleado seleccionando mes y año en un modal | Administrador |
-| CU-33 | Generar factura/garantía desde un trabajo de carro | Administrador |
-| CU-34 | Generar factura agrupando múltiples trabajos | Administrador |
-| CU-35 | Ver listado de facturas con detalle en modal | Administrador |
-| CU-36 | Descargar PDF de factura (estilo ticket POS 80mm) | Administrador |
-| CU-37 | Eliminar factura | Administrador |
+| CU-17 | Iniciar sesión (login) | Administrador |
+| CU-18 | Cerrar sesión (logout) | Administrador |
+| CU-19 | Bloquear cuenta por intentos fallidos de login | Sistema |
+| CU-20 | Desbloquear cuenta manualmente desde configuración | Administrador |
+| CU-21 | Cambiar contraseña desde configuración | Administrador |
+| CU-22 | Ver información de cuenta (email, nombre, estado bloqueo) | Administrador |
+| CU-23 | Escanear VIN con cámara al crear trabajo de carro | Administrador |
+| CU-24 | Cerrar trabajos de carro automáticamente al cerrar periodo | Sistema |
+| CU-25 | Descargar PDF de pagos por empleado con ganancia proporcional | Administrador |
+| CU-26 | Ver detalle completo de un periodo contable (trabajos, gastos, resumen) | Administrador |
+| CU-27 | Ver detalle completo de un trabajo de carro en modal | Administrador |
+| CU-28 | Buscar trabajos por VIN en el listado | Administrador |
+| CU-29 | Generar factura/garantía desde un trabajo de carro | Administrador |
+| CU-30 | Generar factura agrupando múltiples trabajos | Administrador |
+| CU-31 | Ver listado de facturas con detalle en modal | Administrador |
+| CU-32 | Descargar PDF de factura (estilo ticket POS 80mm) | Administrador |
+| CU-33 | Eliminar factura | Administrador |
+| CU-34 | Recalcular manualmente un periodo abierto | Administrador |
+| CU-35 | Gestionar gastos fijos (crear, editar, eliminar) | Administrador |
+| CU-36 | Ver PDF de empleado inline (vista previa en pestaña) | Administrador |
+| CU-37 | Ver PDF de factura inline (vista previa en pestaña) | Administrador |
+| CU-38 | Filtrar dashboard por mes, filtrar solo con botón | Administrador |
+| CU-39 | Ver ganancias empleados por trabajo con acordeón | Administrador |
 
 ---
 
 ## 9. Criterios de Aceptación
 
-- Al crear/editar una semana, el sistema calcula automáticamente DDDG, Ganancia Empresa, Neto a Repartir, montos por empleado y monto del jefe, mostrando los resultados sin recargar.
-- El sistema impide crear dos registros de contabilidad para la misma semana.
+- Al crear/editar un trabajo, el sistema calcula automáticamente DDDG, Ganancia, Neto, montos y monto del jefe.
+- El sistema impide crear dos registros de contabilidad para la misma quincena.
 - El sistema impide guardar empleados activos cuya suma de porcentajes supere el 100%.
-- Los ingresos semanales se calculan automáticamente desde los `CarJob` en el rango de fechas de la semana.
-- Si no existe semana para la fecha de un `CarJob`, se crea automáticamente.
-- La exportación a Excel genera un archivo `.xlsx` válido con estilos profesionales (encabezados, filas alternadas, formato moneda, totales, 2 hojas para contabilidad).
-- El dashboard muestra correctamente los totales acumulados, gráfico de barras (ingresos vs gastos) y gráfico dona (distribución empleados).
-- Ningún endpoint de la API (excepto login/registro) responde sin un token JWT válido.
-- Un usuario no autenticado es redirigido al login.
-- Las contraseñas nunca se almacenan ni se transmiten en texto plano.
-- El registro de administrador no permite la creación libre de múltiples cuentas.
-- Tras 5 intentos fallidos de login, la cuenta se bloquea y el servidor responde HTTP 423 con `locked: true`.
-- La página de configuración permite desbloquear la cuenta y cambiar la contraseña.
-- Al cerrar un periodo contable, todos los trabajos dentro del rango se marcan como cerrados y no se pueden editar/eliminar.
-- El escáner VIN captura correctamente códigos Code 128/Code 39: abre la cámara trasera, el usuario toma una foto manualmente y decodifica en esa imagen.
-- El PDF de pagos por empleado descarga un archivo válido con header de empresa, periodos, trabajos y ganancia proporcional sin precio de servicio visible.
-- Al hacer clic en el nombre de un periodo en la tabla de contabilidad, se abre una página de detalle con trabajos, gastos y resumen.
-- Al hacer clic en una fila de trabajo, se abre un modal con todos los detalles del trabajo.
-- El campo de búsqueda por VIN filtra los trabajos en tiempo real (búsqueda parcial, case-insensitive).
-- Al cambiar las fechas del calendario en el dashboard, los datos se recargan automáticamente.
-- Al descargar PDF de empleado, se muestra un modal para seleccionar mes y año antes de la descarga.
-- Al crear una factura, se puede seleccionar uno o varios trabajos de la lista mediante checkboxes.
-- El PDF de factura se genera en formato ticket POS (80mm de ancho) con la información de la empresa centrada, servicios en tabla, total resaltado, y texto de garantía en inglés.
-- Los textos en el PDF de factura no se cortan ni se superponen; las descripciones largas hacen wrap y los precios se mantienen en una sola línea alineados a la derecha.
-- Al hacer clic en "Generar factura" en el modal de detalle de un trabajo, se abre un formulario para ingresar el nombre del cliente y se crea la factura inmediatamente.
+- Los ingresos se calculan automáticamente desde los `CarJob` en el rango de fechas.
+- Si no existe quincena para la fecha de un `CarJob`, se crea automáticamente.
+- La exportación a Excel genera un archivo `.xlsx` válido con estilos profesionales.
+- El dashboard muestra correctamente los totales acumulados y gráficos.
+- Ningún endpoint (excepto login) responde sin token JWT válido.
+- Usuario no autenticado es redirigido al login.
+- Contraseñas nunca en texto plano.
+- Tras 5 intentos fallidos de login → HTTP 423.
+- Al cerrar un periodo, todos los `CarJob` del rango se marcan como cerrados.
+- El escáner VIN captura códigos Code 128/Code 39: foto manual, decode con `@zxing/library`.
+- El PDF de pagos por empleado se genera en formato térmico, sin logo ni QR, solo fecha + ganancia.
+- El PDF de factura se genera en formato ticket POS 80mm (Courier, #000, 9pt min).
+- Los textos en el PDF de factura no se cortan; descripciones hacen wrap, precios alineados a la derecha.
+- Al hacer clic en "Generar factura" en modal de trabajo, se crea factura inmediatamente.
+- Botón "Recalcular" en detalle del periodo funciona y actualiza los valores en pantalla.
+- Gastos fijos se dividen en 2 automáticamente por periodo.
+- Dashboard carga mes actual por defecto, filtra solo al hacer clic en "Filtrar".
+- Submit de CarJob se deshabilita mientras se guarda.
+- Paper types se muestran en inglés, con "DOES NOT APPLY" como opción.
+- Periodos vacíos se eliminan automáticamente al remover el último trabajo.
+- Los cambios en % de empleado no afectan trabajos ya creados (snapshot).
+- Vista inline de PDFs (factura y empleado) funciona en nueva pestaña con token.
 
 ---
 
 ## 10. Entregables
 
-- Código fuente del backend (Node.js + Express + TypeScript).
-- Código fuente del frontend (Next.js + TypeScript + Tailwind CSS).
-- Documentación de la API REST (disponible mediante endpoints documentados en código).
+- Código fuente del backend (Node.js + Express + TypeScript, ESM).
+- Código fuente del frontend (Next.js 16 + TypeScript + Tailwind CSS v4).
+- Documentación de la API REST (endpoints documentados en código).
 
 ---
 
 ## 11. Sistema de Diseño
 
-El diseño completo (colores, tipografía, layout, componentes, login, responsive, animaciones) está documentado en `Context/diseno.md`.
+El diseño completo (colores, tipografía, layout, componentes, login, responsive, animaciones) está documentado en `Contexto/diseno.md`.
 
 ---
 
 ## 12. Decisiones de Diseño Confirmadas
 
-1. **Income auto-calculado:** los ingresos del periodo se calculan automáticamente desde `CarJob.payment`, no se ingresan manualmente.
-2. **Gastos:** se desglosan en **varios ítems de gasto**, cada uno con descripción y monto.
-3. **Periodo auto-creado:** al registrar un `CarJob`, si no existe quincena para la fecha, se crea automáticamente (1-15 o 16-fin de mes).
-4. **Periodos editables:** solo los gastos se pueden modificar en un periodo abierto; fechas e ingreso son de solo lectura.
-5. **Cierre manual:** los periodos se cierran manualmente; el sistema no forza cierre automático.
-6. **Fórmulas:** `DDDG = income - expenses` (mínimo 0), `companyProfit = DDDG * 20%`, `netToDistribute = DDDG - companyProfit`.
-7. **Autenticación:** login con JWT, registro restringido a un solo admin.
-8. **Despliegue:** backend (Render), frontend (Vercel), CORS y variables de entorno.
-9. **Diseño:** paleta indigo/saffron, sidebar ODOO-style siempre visible, gráficos recharts.
-10. **Exportación:** Excel con `exceljs` (estilos: encabezados, filas alternadas, formato moneda, totales).
-11. **Fechas límite con `$gte`/`$lt`:** al usar `LocalDate` como ISODate con offset UTC, `$lte` excluye documentos del día límite. Se usa `$gte`/`$lt` con `end.plusDays(1)` para incluir correctamente todo el rango.
-12. **Cierre en cascada:** al cerrar un periodo, se marcan todos los `CarJob` del rango como `closed=true`, simplificando el modelo (sin relación many-to-many).
-13. **Escáner VIN foto-based con `@zxing/library`:** el usuario abre la cámara, ve el video en vivo, presiona "Tomar foto" para capturar un frame, y el código se decodifica mediante `@zxing/library`. Compatible con iOS y Android. No usa escaneo continuo en vivo.
-14. **Bloqueo por fuerza bruta:** 5 intentos / 30 min, configurable vía variables de entorno. Desbloqueo manual desde `/settings` (sin notificación por correo en MVP).
-15. **Login oscuro vs app clara:** la pantalla de login usa fondo oscuro profesional (automotriz), la app interior usa fondo claro funcional.
-16. **PDF de pagos proporcional:** `job.payment / totalIncome * employeeAmount`. El empleado ve su ganancia por trabajo sin conocer el precio total del servicio.
-17. **Modal de detalle de trabajo:** al hacer clic en una fila de trabajo se abre un modal con todos los detalles. No es necesario navegar a otra página.
-18. **Selector de mes/año para PDF:** el PDF de empleados requiere seleccionar mes y año en un modal antes de descargar, permitiendo consultar periodos pasados.
-19. **Dashboard auto-filtro:** al cambiar las fechas del calendario en el dashboard, los datos se recargan automáticamente (useEffect), sin necesidad de botón.
-20. **Búsqueda de VIN en trabajos:** filtro por VIN con búsqueda parcial (regex, case-insensitive) en el listado de trabajos y en la exportación a Excel.
-21. **Factura desde trabajo:** desde el modal de detalle de un CarJob se puede generar una factura escribiendo el nombre del cliente. La descripción y el monto se toman del trabajo, simplificando el flujo.
-22. **Múltiples trabajos por factura:** el formulario de creación de facturas usa checkboxes para seleccionar varios CarJobs, permitiendo agrupar servicios de un mismo cliente.
-23. **PDF estilo ticket POS 80mm:** la factura se genera con ancho fijo 302pt, márgenes reducidos (8pt), encabezado centrado, tabla con wrap de descripción, precio alineado a la derecha, total grande. El alto de página se calcula dinámicamente según el contenido para que no sobre espacio en blanco. Texto en inglés.
-24. **Logo opcional en PDF:** si existe `backend/assets/logo.PNG` se muestra centrado en la parte superior; si no, se omite sin errores. El usuario debe colocar el archivo manualmente. El nombre debe tener extensión mayúscula `.PNG` (sensible a mayúsculas en Linux/Render).
-25. **iOS date input fix:** Safari iOS no muestra placeholder nativo en `<input type="date">`. Se creó un componente `DateInput` que superpone un `<span>` con el placeholder cuando el input está vacío.
-26. **VIN scanner sin escaneo continuo:** se cambió de detección automática continua (video → `BarcodeDetector`/`@zxing/library`) a captura manual: el usuario ve el video en vivo, presiona "Tomar foto", se captura un frame y se decodifica. Más fiable en iOS.
-27. **Fechas UTC en quincena:** `getQuincena()` usa `Date.UTC` y `getUTCDate()`/`getUTCMonth()`/`getUTCFullYear()` para evitar que la zona horaria del servidor (UTC) desplace la fecha al mostrarla en Colombia (UTC-5). Las fechas de inicio se crean al mediodía UTC para evitar cruces de medianoche.
-28. **Snapshot de porcentajes por trabajo:** cada `CarJob` almacena `employeeShares` (snapshot de empleados activos con su % al momento de crear el trabajo). Al recalcular un periodo, se suman las ganancias proporcionales por trabajo usando el snapshot de cada trabajo. Cambiar el % de un empleado después no afecta trabajos ya creados.
+1. **Income auto-calculado:** desde `CarJob.payment`.
+2. **Gastos:** desglosados en ítems de gasto (descripción + monto).
+3. **Periodo auto-creado:** al registrar un `CarJob`, si no existe quincena, se crea automáticamente.
+4. **Periodos editables:** solo expenseItems son modificables en periodo abierto.
+5. **Cierre manual:** el sistema no forza cierre automático.
+6. **Fórmulas:** DDDG = income - expenses (mín 0), companyProfit = DDDG * 20%, netToDistribute = DDDG - companyProfit.
+7. **Autenticación:** JWT + bcrypt, sin registro público.
+8. **Despliegue:** backend (Render), frontend (Vercel), CORS configurable.
+9. **Diseño:** paleta indigo/saffron, sidebar ODOO-style, gráficos recharts.
+10. **Exportación:** Excel con exceljs (estilos profesionales).
+11. **Quincena con UTC midnight:** `getQuincena()` usa `Date.UTC`, `getUTCDate()` etc., para evitar desfase de zona horaria.
+12. **Cierre en cascada:** al cerrar periodo, se marcan `CarJob.closed = true`.
+13. **Escáner VIN foto-based con `@zxing/library`:** sin escaneo continuo. Usuario presiona "Tomar foto" → captura frame → decode.
+14. **Bloqueo por fuerza bruta:** 5 intentos / 30 min, HTTP 423. Desbloqueo manual desde Settings.
+15. **Login oscuro vs app clara:** login fondo oscuro profesional, app fondo claro funcional.
+16. **PDF de pagos proporcional:** `job.payment / totalIncome * employeeAmount`. Solo muestra ganancia del empleado.
+17. **Modal de detalle de trabajo:** al hacer clic en fila → modal con todos los detalles.
+18. **Selector de mes/año para PDF empleado:** modal antes de descargar.
+19. **Dashboard filtra solo con botón:** `useEffect` no depende de fechas. Carga mes actual por defecto.
+20. **Búsqueda de VIN:** regex, case-insensitive.
+21. **Factura desde trabajo:** modal con nombre del cliente, descripción y monto desde el trabajo.
+22. **Múltiples trabajos por factura:** checkboxes en formulario de creación.
+23. **PDF factura estilo ticket POS 80mm (Courier, #000, 9pt min, 204pt ancho):** sin QR, sin logo (opcional), sin colores. Solo Courier/CourierPrime.
+24. **Logo opcional en PDF:** `backend/assets/logo.PNG` (extensión mayúscula, sensible en Linux). Centrado 200px, escala de grises con `sharp`.
+25. **iOS date input fix:** componente `DateInput` con `<span>` superpuesto como placeholder.
+26. **Fechas UTC en toda la app:** todos los `toLocaleDateString` usan `timeZone: 'UTC'`.
+27. **Snapshot de porcentajes por trabajo:** `CarJob.employeeShares[]`. Cambiar % de empleado no afecta trabajos ya creados.
+28. **Gastos fijos automáticos:** se gestionan en Settings, se dividen en 2 por periodo, se muestran como solo lectura en detalle.
+29. **Recalcular manual:** botón en página de detalle del periodo. Única forma de refrescar cálculos (no hay recálculo automático al cambiar empleados).
+30. **Periodos vacíos se eliminan:** al borrar el último `CarJob` de un periodo con income=0, sin expenseItems, sin fixedExpenses, el periodo se elimina.
+31. **Paper types en inglés:** "Premium Film", "Ceramic Film", "Ultra Ceramic Film", "DOES NOT APPLY". Multi-select.
+32. **Submit button deshabilitado mientras guarda:** evita duplicados de CarJob.
+33. **PDF empleado formato térmico:** mismo estilo que factura (Courier, 204pt, #000), sin logo/QR/teléfono. Solo fecha + ganancia por trabajo.
+34. **PDF inline view:** botón "Ver" (ojo) abre PDF en nueva pestaña con `?token=` en URL.
+35. **CORS multi-origen + Vercel previews:** `CORS_ORIGINS` coma-separados, `CORS_ALLOW_VERCEL_PREVIEWS` para wildcard `.vercel.app`.
+36. **ESM migration:** `module: "esnext"`, `"type": "module"`, imports con `.js`. tsconfig `"types": ["node"]`.
+37. **`.npmrc` con `include=dev`** para que Render instale devDependencies (necesarias para TypeScript).
+38. **Sin ruta `/register`:** eliminada para evitar creación de cuentas no autorizadas.
 
 ---
 
-*Documento elaborado como base para el desarrollo del módulo de Contabilidad del ERP. Sujeto a revisión y ajustes durante la fase de diseño.*
+*Documento elaborado como base para el desarrollo del ERP. Sujeto a revisión y ajustes durante la fase de diseño.*
