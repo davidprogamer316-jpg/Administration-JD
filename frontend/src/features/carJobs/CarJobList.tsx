@@ -23,10 +23,10 @@ function formatMoney(n: number) {
 }
 
 const PAPER_OPTIONS = [
-  { value: 'premium', label: 'Papel Premium' },
-  { value: 'ceramic', label: 'Papel Ceramic' },
-  { value: 'ultra_ceramic', label: 'Papel Ultra Cerámico' },
-  { value: 'none', label: 'Does not apply' },
+  { value: 'premium', label: 'Premium Film' },
+  { value: 'ceramic', label: 'Ceramic Film' },
+  { value: 'ultra_ceramic', label: 'Ultra Ceramic Film' },
+  { value: 'none', label: 'DOES NOT APPLY' },
 ];
 
 export default function CarJobList() {
@@ -312,7 +312,7 @@ export default function CarJobList() {
               />
             </div>
             <div>
-              <label className="block text-text-muted text-sm mb-2">Papeles usados</label>
+              <label className="block text-text-muted text-sm mb-2">Film used</label>
               <div className="space-y-1.5">
                 {PAPER_OPTIONS.map((opt) => {
                   const checked = formPaperTypes.includes(opt.value);
@@ -527,7 +527,7 @@ export default function CarJobList() {
             {(detailJob.paperTypes?.length ?? 0) > 0 && (
               <div>
                 <p className="text-text-muted text-xs uppercase tracking-wider mb-0.5">
-                  Papeles usados
+                  Film used
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {detailJob.paperTypes.map((pt) => {
