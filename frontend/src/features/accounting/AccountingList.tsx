@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useMemo, type FormEvent } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import type { AccountingPeriod } from '@/types';
@@ -8,6 +8,7 @@ import {
   Lock,
   Search,
   FileDown,
+  ChevronDown,
 } from 'lucide-react';
 import { downloadFromApi } from '@/lib/download';
 import DateInput from '@/components/DateInput';
@@ -29,12 +30,58 @@ function periodLabel(p: AccountingPeriod) {
   return `Q${p.periodNumber} (${formatDate(p.periodStartDate)} - ${formatDate(p.periodEndDate)})`;
 }
 
+type YearGroup = {
+  year: number;
+  months: MonthGroup[];
+};
+
+type MonthGroup = {
+  monthKey: string; // "YYYY-MM"
+  label: string;
+  periods: AccountingPeriod[];
+};
+
+function groupPeriods(periods: AccountingPeriod[]): YearGroup[] {
+  const map = new Map<string, AccountingPeriod[]>();
+  for (const p of periods) {
+    const d = new Date(p.periodStartDate);
+    const year = d.getUTCFullYear();
+    const month = d.getUTCMonth();
+    const key = `${year}-${String(month).padStart(2, '0')}`;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(p);
+  }
+
+  const yearsMap = new Map<number, MonthGroup[]>();
+  for (const [monthKey, per] of map) {
+    const [yStr, mStr] = monthKey.split('-');
+    const year = parseInt(yStr);
+    const month = parseInt(mStr);
+    const d = new Date(year, month);
+    const label = d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+    const group: MonthGroup = { monthKey, label, periods: per };
+    if (!yearsMap.has(year)) yearsMap.set(year, []);
+    yearsMap.get(year)!.push(group);
+  }
+
+  return Array.from(yearsMap.entries())
+    .sort(([a], [b]) => b - a)
+    .map(([year, months]) => ({
+      year,
+      months: months.sort((a, b) => b.monthKey.localeCompare(a.monthKey)),
+    }));
+}
+
 export default function AccountingList() {
   const [periods, setPeriods] = useState<AccountingPeriod[]>([]);
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [error, setError] = useState('');
+
+  const [expandedYears, setExpandedYears] = useState<Set<number>>(new Set());
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
+
   async function load() {
     try {
       const params = new URLSearchParams();
@@ -71,13 +118,38 @@ export default function AccountingList() {
     }
   }
 
-  const allEmployeeNames = [
-    ...new Set(
-      periods.flatMap((p) =>
-        p.employeeDistribution.map((e) => e.employeeName)
-      )
-    ),
-  ];
+  const tree = useMemo(() => groupPeriods(periods), [periods]);
+
+  const totals = useMemo(() => {
+    const t = { income: 0, expenses: 0, dddg: 0, profit: 0, neto: 0, boss: 0 };
+    for (const p of periods) {
+      t.income += p.income;
+      t.expenses += p.expenses;
+      t.dddg += p.dddg;
+      t.profit += p.companyProfit;
+      t.neto += p.netToDistribute;
+      t.boss += p.bossAmount;
+    }
+    return t;
+  }, [periods]);
+
+  function toggleYear(year: number) {
+    setExpandedYears((prev) => {
+      const next = new Set(prev);
+      if (next.has(year)) next.delete(year);
+      else next.add(year);
+      return next;
+    });
+  }
+
+  function toggleMonth(key: string) {
+    setExpandedMonths((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   if (loading) {
     return (
@@ -120,7 +192,7 @@ export default function AccountingList() {
               `contabilidad-${new Date().toISOString().split('T')[0]}.xlsx`
             );
           }}
-          className="flex items-center gap-2 rounded-lg border border-border text-text-muted px-4 py-2 text-sm hover:bg-bg-page transition-colors"
+          className="flex items-center gap-2 rounded-lg border border-border text-text-muted px-4 py-2 text-sm hover:bg-bg-page transition-colors cursor-pointer"
         >
           <FileDown size={16} />
           Exportar Excel
@@ -133,6 +205,40 @@ export default function AccountingList() {
         </div>
       )}
 
+      {/* Totals summary */}
+      <div className="rounded-xl border border-border shadow-sm bg-surface p-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4 text-center">
+          <div>
+            <p className="text-xs text-text-muted uppercase tracking-wider">Ingresos</p>
+            <p className="text-sm font-semibold text-text-body">{formatMoney(totals.income)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-text-muted uppercase tracking-wider">Gastos</p>
+            <p className="text-sm font-semibold text-text-body">{formatMoney(totals.expenses)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-text-muted uppercase tracking-wider">DDDG</p>
+            <p className="text-sm font-semibold text-text-body">{formatMoney(totals.dddg)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-text-muted uppercase tracking-wider">Ganancia</p>
+            <p className="text-sm font-semibold text-text-body">{formatMoney(totals.profit)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-text-muted uppercase tracking-wider">Neto</p>
+            <p className="text-sm font-semibold text-text-body">{formatMoney(totals.neto)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-text-muted uppercase tracking-wider">Jefe</p>
+            <p className="text-sm font-semibold text-text-body">{formatMoney(totals.boss)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-text-muted uppercase tracking-wider">Periodos</p>
+            <p className="text-sm font-semibold text-text-body">{periods.length}</p>
+          </div>
+        </div>
+      </div>
+
       {periods.length === 0 ? (
         <div className="rounded-xl border border-border p-12 shadow-sm bg-surface text-center">
           <p className="text-text-muted">
@@ -141,118 +247,99 @@ export default function AccountingList() {
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border shadow-sm bg-surface">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left px-3 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
-                  Periodo
-                </th>
-                <th className="text-right px-3 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
-                  Ingresos
-                </th>
-                <th className="text-right px-3 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
-                  Gastos
-                </th>
-                <th className="text-right px-3 py-3 text-text-muted text-xs font-medium uppercase tracking-wider hidden sm:table-cell">
-                  DDDG
-                </th>
-                <th className="text-right px-3 py-3 text-text-muted text-xs font-medium uppercase tracking-wider hidden sm:table-cell">
-                  Ganancia
-                </th>
-                <th className="text-right px-3 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
-                  Neto
-                </th>
-                {allEmployeeNames.map((name) => (
-                  <th
-                    key={name}
-                    className="text-right px-3 py-3 text-text-muted text-xs font-medium uppercase tracking-wider hidden lg:table-cell"
-                  >
-                    {name}
-                  </th>
-                ))}
-                <th className="text-right px-3 py-3 text-text-muted text-xs font-medium uppercase tracking-wider hidden lg:table-cell">
-                  Jefe
-                </th>
-                <th className="text-center px-3 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
-                  Estado
-                </th>
-                <th className="text-right px-3 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {periods.map((p, i) => (
-                <tr
-                  key={p._id}
-                  className={`border-b border-border even:bg-bg-page`}
+        <div className="rounded-xl border border-border shadow-sm bg-surface overflow-hidden">
+          {tree.map((yearGroup) => {
+            const yearOpen = expandedYears.has(yearGroup.year);
+            return (
+              <div key={yearGroup.year} className="border-b border-border last:border-0">
+                {/* Year header */}
+                <button
+                  onClick={() => toggleYear(yearGroup.year)}
+                  className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-bg-page transition-colors cursor-pointer"
                 >
-                  <td className="px-3 py-3 text-sm whitespace-nowrap">
-                    <Link
-                      href={`/accounting/${p._id}`}
-                      className="text-accent hover:text-accent/80 hover:underline font-medium transition-colors"
-                    >
-                      {periodLabel(p)}
-                    </Link>
-                  </td>
-                  <td className="px-3 py-3 text-sm text-text-body text-right">
-                    {formatMoney(p.income)}
-                  </td>
-                  <td className="px-3 py-3 text-sm text-text-body text-right">
-                    {formatMoney(p.expenses)}
-                  </td>
-                  <td className="px-3 py-3 text-sm text-text-body text-right font-medium hidden sm:table-cell">
-                    {formatMoney(p.dddg)}
-                  </td>
-                  <td className="px-3 py-3 text-sm text-text-body text-right hidden sm:table-cell">
-                    {formatMoney(p.companyProfit)}
-                  </td>
-                  <td className="px-3 py-3 text-sm text-text-body text-right">
-                    {formatMoney(p.netToDistribute)}
-                  </td>
-                  {allEmployeeNames.map((name) => {
-                    const share = p.employeeDistribution.find(
-                      (e) => e.employeeName === name
-                    );
-                    return (
-                      <td
-                        key={name}
-                        className="px-3 py-3 text-sm text-text-body text-right hidden lg:table-cell"
-                      >
-                        {share ? formatMoney(share.amount) : '$0.00'}
-                      </td>
-                    );
-                  })}
-                  <td className="px-3 py-3 text-sm text-text-body text-right font-medium hidden lg:table-cell">
-                    {formatMoney(p.bossAmount)}
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    {p.closed ? (
-                      <span className="rounded-full px-3 py-1 text-xs font-medium bg-gray-100 text-gray-500">
-                        Cerrado
-                      </span>
-                    ) : (
-                      <span className="rounded-full px-3 py-1 text-xs font-medium bg-emerald-100 text-emerald-700">
-                        Abierto
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-3 py-3 text-right">
-                    {!p.closed && (
-                      <button
-                        onClick={() => handleClose(p._id)}
-                        className="p-1.5 text-text-muted hover:text-danger transition-colors"
-                        title="Cerrar periodo"
-                      >
-                        <Lock size={16} />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  <span className="text-base font-heading font-semibold text-text-body">
+                    {yearGroup.year}
+                  </span>
+                  <ChevronDown
+                    size={18}
+                    className={`shrink-0 text-text-muted transition-transform ${
+                      yearOpen ? '' : '-rotate-90'
+                    }`}
+                  />
+                </button>
+
+                {yearOpen && (
+                  <div className="border-t border-border">
+                    {yearGroup.months.map((monthGroup) => {
+                      const monthOpen = expandedMonths.has(monthGroup.monthKey);
+                      return (
+                        <div key={monthGroup.monthKey} className="border-b border-border last:border-0">
+                          {/* Month header */}
+                          <button
+                            onClick={() => toggleMonth(monthGroup.monthKey)}
+                            className="w-full flex items-center justify-between px-8 py-3 text-left hover:bg-bg-page transition-colors cursor-pointer"
+                          >
+                            <span className="text-sm font-medium text-text-body">
+                              {monthGroup.label}
+                            </span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs text-text-muted">
+                                {monthGroup.periods.length} {monthGroup.periods.length === 1 ? 'periodo' : 'periodos'}
+                              </span>
+                              <ChevronDown
+                                size={15}
+                                className={`shrink-0 text-text-muted transition-transform ${
+                                  monthOpen ? '' : '-rotate-90'
+                                }`}
+                              />
+                            </div>
+                          </button>
+
+                          {monthOpen && (
+                            <div className="border-t border-border bg-bg-page/50">
+                              {monthGroup.periods.map((p) => (
+                                <div
+                                  key={p._id}
+                                  className="flex items-center justify-between px-12 py-3 hover:bg-bg-page transition-colors border-b border-border last:border-0"
+                                >
+                                  <Link
+                                    href={`/accounting/${p._id}`}
+                                    className="text-accent hover:text-accent/80 hover:underline font-medium text-sm transition-colors"
+                                  >
+                                    {periodLabel(p)}
+                                  </Link>
+                                  <div className="flex items-center gap-3">
+                                    {p.closed ? (
+                                      <span className="rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-500">
+                                        Cerrado
+                                      </span>
+                                    ) : (
+                                      <span className="rounded-full px-2.5 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700">
+                                        Abierto
+                                      </span>
+                                    )}
+                                    {!p.closed && (
+                                      <button
+                                        onClick={() => handleClose(p._id)}
+                                        className="p-1 text-text-muted hover:text-danger transition-colors cursor-pointer"
+                                        title="Cerrar periodo"
+                                      >
+                                        <Lock size={14} />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
