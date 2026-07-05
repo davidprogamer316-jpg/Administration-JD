@@ -3,6 +3,10 @@ import { AccountingPeriod } from '../../accounting/models/index.js';
 import { CarJob, ICarJob } from '../../carJobs/models/index.js';
 import { Employee } from '../models/index.js';
 
+function formatMoney(n: number): string {
+  return `$${n.toLocaleString('es-CO', { minimumFractionDigits: 2 })}`;
+}
+
 export async function generateEmployeePdf(
   employeeId: string,
   year: number,
@@ -105,7 +109,7 @@ export async function generateEmployeePdf(
               : 0;
 
           doc.text(
-            `  ${job.date.toLocaleDateString('es-ES')} | ${job.vin} | ${job.description.substring(0, 40)} - Ganancia: $${proportion.toLocaleString('es-CO', { minimumFractionDigits: 2 })}`,
+            `  ${job.date.toLocaleDateString('es-ES')} — ${formatMoney(proportion)}`,
             { indent: 10 }
           );
         }
@@ -114,7 +118,7 @@ export async function generateEmployeePdf(
           .font('Helvetica-Bold')
           .fillColor('#5B8C6B')
           .text(
-            `  Total periodo: $${share.amount.toLocaleString('es-CO', { minimumFractionDigits: 2 })}`,
+            `  Total periodo: ${formatMoney(share.amount)}`,
             { indent: 10 }
           );
 
@@ -142,7 +146,7 @@ export async function generateEmployeePdf(
       .font('Helvetica-Bold')
       .fillColor('#1B1B2F')
       .text(
-        `Total ganado en el mes: $${totalEarned.toLocaleString('es-CO', { minimumFractionDigits: 2 })}`,
+        `Total ganado en el mes: ${formatMoney(totalEarned)}`,
         { align: 'center' }
       );
 
