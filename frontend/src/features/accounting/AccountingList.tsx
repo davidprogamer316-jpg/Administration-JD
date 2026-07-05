@@ -30,13 +30,18 @@ function periodLabel(p: AccountingPeriod) {
   return `Q${p.periodNumber} (${formatDate(p.periodStartDate)} - ${formatDate(p.periodEndDate)})`;
 }
 
+type YearGroup = {
+  year: number;
+  months: MonthGroup[];
+};
+
 type MonthGroup = {
-  monthKey: string;
+  monthKey: string; // "YYYY-MM"
   label: string;
   periods: AccountingPeriod[];
 };
 
-function groupByMonth(periods: AccountingPeriod[]): MonthGroup[] {
+function groupPeriods(periods: AccountingPeriod[]): YearGroup[] {
   const map = new Map<string, AccountingPeriod[]>();
   for (const p of periods) {
     const d = new Date(p.periodStartDate);
@@ -47,15 +52,24 @@ function groupByMonth(periods: AccountingPeriod[]): MonthGroup[] {
     map.get(key)!.push(p);
   }
 
-  return Array.from(map.entries())
-    .map(([monthKey, per]) => {
-      const [yStr, mStr] = monthKey.split('-');
-      const year = parseInt(yStr);
-      const month = parseInt(mStr);
-      const label = new Date(year, month).toLocaleDateString('es-ES', { month: 'long' });
-      return { monthKey, label, periods: per };
-    })
-    .sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+  const yearsMap = new Map<number, MonthGroup[]>();
+  for (const [monthKey, per] of map) {
+    const [yStr, mStr] = monthKey.split('-');
+    const year = parseInt(yStr);
+    const month = parseInt(mStr);
+    const d = new Date(year, month);
+    const label = d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+    const group: MonthGroup = { monthKey, label, periods: per };
+    if (!yearsMap.has(year)) yearsMap.set(year, []);
+    yearsMap.get(year)!.push(group);
+  }
+
+  return Array.from(yearsMap.entries())
+    .sort(([a], [b]) => b - a)
+    .map(([year, months]) => ({
+      year,
+      months: months.sort((a, b) => b.monthKey.localeCompare(a.monthKey)),
+    }));
 }
 
 export default function AccountingList() {
@@ -65,6 +79,7 @@ export default function AccountingList() {
   const [endDate, setEndDate] = useState('');
   const [error, setError] = useState('');
 
+  const [expandedYears, setExpandedYears] = useState<Set<number>>(new Set());
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
 
   async function load() {
@@ -103,7 +118,29 @@ export default function AccountingList() {
     }
   }
 
-  const months = useMemo(() => groupByMonth(periods), [periods]);
+  const tree = useMemo(() => groupPeriods(periods), [periods]);
+
+  const totals = useMemo(() => {
+    const t = { income: 0, expenses: 0, dddg: 0, profit: 0, neto: 0, boss: 0 };
+    for (const p of periods) {
+      t.income += p.income;
+      t.expenses += p.expenses;
+      t.dddg += p.dddg;
+      t.profit += p.companyProfit;
+      t.neto += p.netToDistribute;
+      t.boss += p.bossAmount;
+    }
+    return t;
+  }, [periods]);
+
+  function toggleYear(year: number) {
+    setExpandedYears((prev) => {
+      const next = new Set(prev);
+      if (next.has(year)) next.delete(year);
+      else next.add(year);
+      return next;
+    });
+  }
 
   function toggleMonth(key: string) {
     setExpandedMonths((prev) => {
@@ -168,6 +205,40 @@ export default function AccountingList() {
         </div>
       )}
 
+      {/* Totals summary */}
+      <div className="rounded-xl border border-border shadow-sm bg-surface p-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4 text-center">
+          <div>
+            <p className="text-xs text-text-muted uppercase tracking-wider">Ingresos</p>
+            <p className="text-sm font-semibold text-text-body">{formatMoney(totals.income)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-text-muted uppercase tracking-wider">Gastos</p>
+            <p className="text-sm font-semibold text-text-body">{formatMoney(totals.expenses)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-text-muted uppercase tracking-wider">DDDG</p>
+            <p className="text-sm font-semibold text-text-body">{formatMoney(totals.dddg)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-text-muted uppercase tracking-wider">Ganancia</p>
+            <p className="text-sm font-semibold text-text-body">{formatMoney(totals.profit)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-text-muted uppercase tracking-wider">Neto</p>
+            <p className="text-sm font-semibold text-text-body">{formatMoney(totals.neto)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-text-muted uppercase tracking-wider">Jefe</p>
+            <p className="text-sm font-semibold text-text-body">{formatMoney(totals.boss)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-text-muted uppercase tracking-wider">Periodos</p>
+            <p className="text-sm font-semibold text-text-body">{periods.length}</p>
+          </div>
+        </div>
+      </div>
+
       {periods.length === 0 ? (
         <div className="rounded-xl border border-border p-12 shadow-sm bg-surface text-center">
           <p className="text-text-muted">
@@ -177,66 +248,93 @@ export default function AccountingList() {
         </div>
       ) : (
         <div className="rounded-xl border border-border shadow-sm bg-surface overflow-hidden">
-          {months.map((monthGroup) => {
-            const open = expandedMonths.has(monthGroup.monthKey);
+          {tree.map((yearGroup) => {
+            const yearOpen = expandedYears.has(yearGroup.year);
             return (
-              <div key={monthGroup.monthKey} className="border-b border-border last:border-0">
-                {/* Month header */}
+              <div key={yearGroup.year} className="border-b border-border last:border-0">
+                {/* Year header */}
                 <button
-                  onClick={() => toggleMonth(monthGroup.monthKey)}
+                  onClick={() => toggleYear(yearGroup.year)}
                   className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-bg-page transition-colors cursor-pointer"
                 >
                   <span className="text-base font-heading font-semibold text-text-body">
-                    {monthGroup.label}
+                    {yearGroup.year}
                   </span>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-text-muted">
-                      {monthGroup.periods.length} {monthGroup.periods.length === 1 ? 'periodo' : 'periodos'}
-                    </span>
-                    <ChevronDown
-                      size={18}
-                      className={`shrink-0 text-text-muted transition-transform ${
-                        open ? '' : '-rotate-90'
-                      }`}
-                    />
-                  </div>
+                  <ChevronDown
+                    size={18}
+                    className={`shrink-0 text-text-muted transition-transform ${
+                      yearOpen ? '' : '-rotate-90'
+                    }`}
+                  />
                 </button>
 
-                {open && (
-                  <div className="border-t border-border bg-bg-page/50">
-                    {monthGroup.periods.map((p) => (
-                      <div
-                        key={p._id}
-                        className="flex items-center justify-between px-12 py-3 hover:bg-bg-page transition-colors border-b border-border last:border-0"
-                      >
-                        <Link
-                          href={`/accounting/${p._id}`}
-                          className="text-accent hover:text-accent/80 hover:underline font-medium text-sm transition-colors"
-                        >
-                          {periodLabel(p)}
-                        </Link>
-                        <div className="flex items-center gap-3">
-                          {p.closed ? (
-                            <span className="rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-500">
-                              Cerrado
+                {yearOpen && (
+                  <div className="border-t border-border">
+                    {yearGroup.months.map((monthGroup) => {
+                      const monthOpen = expandedMonths.has(monthGroup.monthKey);
+                      return (
+                        <div key={monthGroup.monthKey} className="border-b border-border last:border-0">
+                          {/* Month header */}
+                          <button
+                            onClick={() => toggleMonth(monthGroup.monthKey)}
+                            className="w-full flex items-center justify-between px-8 py-3 text-left hover:bg-bg-page transition-colors cursor-pointer"
+                          >
+                            <span className="text-sm font-medium text-text-body">
+                              {monthGroup.label}
                             </span>
-                          ) : (
-                            <span className="rounded-full px-2.5 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700">
-                              Abierto
-                            </span>
-                          )}
-                          {!p.closed && (
-                            <button
-                              onClick={() => handleClose(p._id)}
-                              className="p-1 text-text-muted hover:text-danger transition-colors cursor-pointer"
-                              title="Cerrar periodo"
-                            >
-                              <Lock size={14} />
-                            </button>
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs text-text-muted">
+                                {monthGroup.periods.length} {monthGroup.periods.length === 1 ? 'periodo' : 'periodos'}
+                              </span>
+                              <ChevronDown
+                                size={15}
+                                className={`shrink-0 text-text-muted transition-transform ${
+                                  monthOpen ? '' : '-rotate-90'
+                                }`}
+                              />
+                            </div>
+                          </button>
+
+                          {monthOpen && (
+                            <div className="border-t border-border bg-bg-page/50">
+                              {monthGroup.periods.map((p) => (
+                                <div
+                                  key={p._id}
+                                  className="flex items-center justify-between px-12 py-3 hover:bg-bg-page transition-colors border-b border-border last:border-0"
+                                >
+                                  <Link
+                                    href={`/accounting/${p._id}`}
+                                    className="text-accent hover:text-accent/80 hover:underline font-medium text-sm transition-colors"
+                                  >
+                                    {periodLabel(p)}
+                                  </Link>
+                                  <div className="flex items-center gap-3">
+                                    {p.closed ? (
+                                      <span className="rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-500">
+                                        Cerrado
+                                      </span>
+                                    ) : (
+                                      <span className="rounded-full px-2.5 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700">
+                                        Abierto
+                                      </span>
+                                    )}
+                                    {!p.closed && (
+                                      <button
+                                        onClick={() => handleClose(p._id)}
+                                        className="p-1 text-text-muted hover:text-danger transition-colors cursor-pointer"
+                                        title="Cerrar periodo"
+                                      >
+                                        <Lock size={14} />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
