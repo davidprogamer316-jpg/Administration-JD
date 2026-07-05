@@ -3,7 +3,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { api } from '@/lib/api';
 import type { Employee } from '@/types';
-import { Pencil, Trash2, UserCheck, UserX, Plus, FileDown } from 'lucide-react';
+import { Pencil, Trash2, UserCheck, UserX, Plus, FileDown, Eye } from 'lucide-react';
 import { downloadFromApi } from '@/lib/download';
 import Modal from '@/components/Modal';
 
@@ -345,19 +345,37 @@ export default function EmployeeList() {
               />
             </div>
           </div>
-          <button
-            onClick={() => {
-              if (!pdfTarget) return;
-              downloadFromApi(
-                `/employees/${pdfTarget._id}/pdf?year=${pdfYear}&month=${pdfMonth}`,
-                `pago-${pdfTarget.name}-${pdfYear}-${pdfMonth.padStart(2, '0')}.pdf`
-              );
-              setPdfTarget(null);
-            }}
-            className="w-full rounded-lg bg-accent text-white px-5 py-2.5 text-sm font-medium hover:bg-accent/90 transition-colors"
-          >
-            Descargar PDF
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                if (!pdfTarget) return;
+                const token = localStorage.getItem('token');
+                window.open(
+                  `${process.env.NEXT_PUBLIC_API_URL}/employees/${pdfTarget._id}/pdf?year=${pdfYear}&month=${pdfMonth}&token=${token}`,
+                  '_blank'
+                );
+                setPdfTarget(null);
+              }}
+              className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-border text-text-muted px-5 py-2.5 text-sm font-medium hover:bg-bg-page transition-colors"
+            >
+              <Eye size={16} />
+              Ver PDF
+            </button>
+            <button
+              onClick={() => {
+                if (!pdfTarget) return;
+                downloadFromApi(
+                  `/employees/${pdfTarget._id}/pdf?year=${pdfYear}&month=${pdfMonth}&download=true`,
+                  `pago-${pdfTarget.name}-${pdfYear}-${pdfMonth.padStart(2, '0')}.pdf`
+                );
+                setPdfTarget(null);
+              }}
+              className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-accent text-white px-5 py-2.5 text-sm font-medium hover:bg-accent/90 transition-colors"
+            >
+              <FileDown size={16} />
+              Descargar PDF
+            </button>
+          </div>
         </div>
       </Modal>
     </div>

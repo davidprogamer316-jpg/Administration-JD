@@ -20,9 +20,12 @@ export async function downloadEmployeePdf(
     );
 
     res.setHeader('Content-Type', 'application/pdf');
+    const isDownload = req.query.download === 'true';
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename=pago-empleado-${employeeId}-${targetYear}-${String(targetMonth).padStart(2, '0')}.pdf`
+      isDownload
+        ? `attachment; filename=pago-empleado-${employeeId}-${targetYear}-${String(targetMonth).padStart(2, '0')}.pdf`
+        : `inline; filename=pago-empleado-${employeeId}-${targetYear}-${String(targetMonth).padStart(2, '0')}.pdf`
     );
     res.send(buffer);
   } catch (err: any) {
