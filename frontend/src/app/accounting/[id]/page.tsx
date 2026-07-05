@@ -34,6 +34,8 @@ export default function AccountingDetailPage() {
   const [jobs, setJobs] = useState<CarJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [recalculating, setRecalculating] = useState(false);
+  const [closing, setClosing] = useState(false);
   const [jobsExpanded, setJobsExpanded] = useState(false);
   const [employeeSectionExpanded, setEmployeeSectionExpanded] = useState(false);
   const [expandedEmployees, setExpandedEmployees] = useState<Set<string>>(new Set());
@@ -58,20 +60,26 @@ export default function AccountingDetailPage() {
 
   async function handleClose() {
     if (!confirm('¿Cerrar este periodo? No se podrá modificar después.')) return;
+    setClosing(true);
     try {
       await api.patch(`/accounting/${params.id}/close`);
-      load();
+      await load();
     } catch {
       setError('Error al cerrar periodo');
+    } finally {
+      setClosing(false);
     }
   }
 
   async function handleRecalculate() {
+    setRecalculating(true);
     try {
       await api.patch(`/accounting/${params.id}/recalculate`);
-      load();
+      await load();
     } catch {
       setError('Error al recalcular periodo');
+    } finally {
+      setRecalculating(false);
     }
   }
 
@@ -136,17 +144,19 @@ export default function AccountingDetailPage() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleRecalculate}
-                  className="flex items-center gap-2 rounded-lg border border-border text-text-muted px-4 py-2 text-sm hover:bg-bg-page transition-colors"
+                  disabled={recalculating}
+                  className="flex items-center gap-2 rounded-lg border border-border text-text-muted px-4 py-2 text-sm hover:bg-bg-page transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <RefreshCw size={16} />
-                  Recalcular
+                  <RefreshCw size={16} className={recalculating ? 'animate-spin' : ''} />
+                  {recalculating ? 'Recalculando...' : 'Recalcular'}
                 </button>
                 <button
                   onClick={handleClose}
-                  className="flex items-center gap-2 rounded-lg border border-border text-text-muted px-4 py-2 text-sm hover:bg-bg-page transition-colors"
+                  disabled={closing}
+                  className="flex items-center gap-2 rounded-lg border border-border text-text-muted px-4 py-2 text-sm hover:bg-bg-page transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Lock size={16} />
-                  Cerrar periodo
+                  {closing ? 'Cerrando...' : 'Cerrar periodo'}
                 </button>
               </div>
             )}
