@@ -9,7 +9,8 @@ import { Employee } from '../models/index.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const COMPANY_NAME = 'Windows Tinting JD';
+const COMPANY_NAME = 'Windows Tinting';
+const COMPANY_NAME2 = 'JD';
 
 function formatDate(d: Date): string {
   return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -73,8 +74,8 @@ export async function generateEmployeePdf(
   // Estimate page height
   let pageH = MARGIN;
   pageH += 5;
-  // Company name
-  pageH += 16;
+  // Company name (two lines)
+  pageH += textH(COMPANY_NAME, CONTENT_W, 18) + 2 + textH(COMPANY_NAME2, CONTENT_W, 18) + 4;
   // Subtitle
   pageH += textH(`Historial de pagos — ${employee.name}`, CONTENT_W, 11) + 4;
   // Month
@@ -135,7 +136,9 @@ export async function generateEmployeePdf(
     // ── Header ──
     doc.fontSize(18).font(FONT).fillColor('#000');
     doc.text(COMPANY_NAME, LEFT, y, { align: 'center', width: CONTENT_W });
-    y += 16;
+    y += textH(COMPANY_NAME, CONTENT_W, 18) + 2;
+    doc.text(COMPANY_NAME2, LEFT, y, { align: 'center', width: CONTENT_W });
+    y += textH(COMPANY_NAME2, CONTENT_W, 18) + 4;
 
     doc.fontSize(11).font(FONT).fillColor('#000');
     doc.text(`Historial de pagos — ${employee.name}`, LEFT, y, { align: 'center', width: CONTENT_W });
