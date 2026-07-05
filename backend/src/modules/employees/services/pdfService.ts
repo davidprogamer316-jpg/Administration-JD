@@ -49,7 +49,7 @@ export async function generateEmployeePdf(
   });
 
   const PAGE_W = 204;
-  const MARGIN = 4;
+  const MARGIN = 12;
   const CONTENT_W = PAGE_W - MARGIN * 2;
   const LEFT = MARGIN;
   const RIGHT = PAGE_W - MARGIN;
