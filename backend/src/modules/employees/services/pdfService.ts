@@ -74,7 +74,7 @@ export async function generateEmployeePdf(
   let pageH = MARGIN;
   pageH += 5;
   // Company name
-  pageH += 16;
+  pageH += textH(COMPANY_NAME, CONTENT_W, 18) + 6;
   // Subtitle
   pageH += textH(`Historial de pagos — ${employee.name}`, CONTENT_W, 11) + 4;
   // Month
@@ -134,8 +134,9 @@ export async function generateEmployeePdf(
 
     // ── Header ──
     doc.fontSize(18).font(FONT).fillColor('#000');
+    const companyH = textH(COMPANY_NAME, CONTENT_W, 18);
     doc.text(COMPANY_NAME, LEFT, y, { align: 'center', width: CONTENT_W });
-    y += 16;
+    y += companyH + 6;
 
     doc.fontSize(11).font(FONT).fillColor('#000');
     doc.text(`Historial de pagos — ${employee.name}`, LEFT, y, { align: 'center', width: CONTENT_W });
