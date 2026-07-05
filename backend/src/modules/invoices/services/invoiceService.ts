@@ -17,21 +17,6 @@ const COMPANY_URL = 'https://tinting-film.com';
 const LOGO_PATH = path.join(__dirname, '../../../../assets/logo.PNG');
 const QR_SIZE = 72;
 
-const PAPER_INFO: Record<string, { label: string; specs: string }> = {
-  premium: {
-    label: 'Premium Film',
-    specs: 'Solar rejection: 40%, UV protection: 90%, Warranty: 6 months',
-  },
-  ceramic: {
-    label: 'Ceramic Film',
-    specs: 'Solar rejection: 70%, UV protection: 100%, Warranty: 5 years',
-  },
-  ultra_ceramic: {
-    label: 'Ultra Ceramic Film',
-    specs: 'Solar rejection: 98%, UV protection: 100%, Warranty: 10 years',
-  },
-};
-
 function formatMoney(n: number): string {
   return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 }
@@ -152,20 +137,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
   pageH += 18;
   // Items
   for (const item of invoice.items) {
-    const itemH = Math.max(20, textH(item.description, DESC_W, 11) + 4);
-    let paperH = 0;
-    if (item.date) {
-      paperH += 2 + textH(`Date: ${item.date}`, CONTENT_W, 9) + 2;
-    }
-    if (item.paperTypes && item.paperTypes.length > 0) {
-      for (const pt of item.paperTypes) {
-        const info = PAPER_INFO[pt];
-        if (info) {
-          paperH += textH(`${info.label} — ${info.specs}`, CONTENT_W, 10) + 1;
-        }
-      }
-    }
-    pageH += itemH + paperH;
+    pageH += 2 + 16 + 4;
   }
   // Total
   pageH += 4 + 28;
@@ -173,8 +145,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
   pageH += 14;
   // Warranty
   pageH += textH(
-    'Warranty applies per the specifications listed above for each ' +
-    'installed film type. This document certifies the completion of the ' +
+    'This document certifies the completion of the ' +
     'safety film installation service.',
     CONTENT_W, 10
   ) + 4;
@@ -265,41 +236,21 @@ export async function generatePdf(id: string): Promise<Buffer> {
 
     // ── Table header ──
     doc.fontSize(11).font(FONT).fillColor('#000');
-    doc.text('SERVICE', LEFT, y, { width: DESC_W });
+    doc.text('DATE', LEFT, y, { width: DESC_W });
     doc.text('AMOUNT', PRICE_X, y, { width: PRICE_W, align: 'right' });
     y += 16;
 
     // ── Table rows ──
     for (const item of invoice.items) {
+      const dateStr = item.date ? formatDate(new Date(item.date)) : '';
       doc.fontSize(11).font(FONT).fillColor('#000');
-      const descH = doc.heightOfString(item.description, { width: DESC_W });
-      let rowH = Math.max(20, descH + 4);
+      const dateH = doc.heightOfString(dateStr, { width: DESC_W });
+      const rowH = Math.max(16, dateH + 4);
 
-      doc.text(item.description, LEFT, y + 2, { width: DESC_W });
+      doc.text(dateStr, LEFT, y + 2, { width: DESC_W });
       doc.text(formatMoney(item.amount), PRICE_X, y + 2, { width: PRICE_W, align: 'right' });
 
-      y += rowH;
-
-      if (item.date) {
-        y += 2;
-        doc.fontSize(9).font(FONT).fillColor('#000');
-        const dateText = `Date: ${formatDate(new Date(item.date))}`;
-        const dateH = doc.heightOfString(dateText, { width: CONTENT_W });
-        doc.text(dateText, LEFT, y, { width: CONTENT_W });
-        y += dateH + 2;
-      }
-
-      if (item.paperTypes && item.paperTypes.length > 0) {
-        doc.fontSize(10).font(FONT).fillColor('#000');
-        for (const pt of item.paperTypes) {
-          const info = PAPER_INFO[pt];
-          if (!info) continue;
-          const text = `${info.label} — ${info.specs}`;
-          const h = doc.heightOfString(text, { width: CONTENT_W });
-          doc.text(text, LEFT, y, { width: CONTENT_W });
-          y += h + 1;
-        }
-      }
+      y += rowH + 4;
     }
 
     // ── Total ──
@@ -319,8 +270,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     // ── Warranty text (centred) ──
     doc.fontSize(10).font(FONT).fillColor('#000');
     const warrantyText =
-      'Warranty applies per the specifications listed above for each ' +
-      'installed film type. This document certifies the completion of the ' +
+      'This document certifies the completion of the ' +
       'safety film installation service.';
     doc.text(warrantyText, LEFT, y, { width: CONTENT_W, align: 'center' });
     y += doc.heightOfString(warrantyText, { width: CONTENT_W }) + 4;
