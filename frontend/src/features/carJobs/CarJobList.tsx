@@ -26,6 +26,7 @@ const PAPER_OPTIONS = [
   { value: 'premium', label: 'Papel Premium' },
   { value: 'ceramic', label: 'Papel Ceramic' },
   { value: 'ultra_ceramic', label: 'Papel Ultra Cerámico' },
+  { value: 'none', label: 'Does not apply' },
 ];
 
 export default function CarJobList() {
@@ -48,11 +49,21 @@ export default function CarJobList() {
   const [formDesc, setFormDesc] = useState('');
   const [formPayment, setFormPayment] = useState('');
   const [formPaperTypes, setFormPaperTypes] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
 
   function togglePaper(val: string) {
-    setFormPaperTypes((prev) =>
-      prev.includes(val) ? prev.filter((x) => x !== val) : [...prev, val]
-    );
+    if (val === 'none') {
+      setFormPaperTypes((prev) =>
+        prev.includes('none') ? [] : ['none']
+      );
+    } else {
+      setFormPaperTypes((prev) => {
+        const filtered = prev.filter((x) => x !== 'none');
+        return filtered.includes(val)
+          ? filtered.filter((x) => x !== val)
+          : [...filtered, val];
+      });
+    }
   }
 
   async function load() {
@@ -90,6 +101,7 @@ export default function CarJobList() {
     setEditing(null);
     setShowForm(false);
     setError('');
+    setSubmitting(false);
   }
 
   function startEdit(job: CarJob) {
@@ -105,6 +117,7 @@ export default function CarJobList() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
+    setSubmitting(true);
 
     try {
       const payload = {
@@ -112,7 +125,7 @@ export default function CarJobList() {
         vin: formVin,
         description: formDesc,
         payment: parseFloat(formPayment),
-        paperTypes: formPaperTypes,
+        paperTypes: formPaperTypes.filter((t) => t !== 'none'),
       };
 
       if (editing) {
@@ -124,6 +137,8 @@ export default function CarJobList() {
       load();
     } catch (err: any) {
       setError(err.message || 'Error al guardar');
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -327,9 +342,10 @@ export default function CarJobList() {
           <div className="flex gap-2 mt-4">
             <button
               type="submit"
-              className="rounded-lg bg-accent text-white px-5 py-2.5 text-sm font-medium hover:bg-accent/90 transition-colors"
+              disabled={submitting}
+              className="rounded-lg bg-accent text-white px-5 py-2.5 text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {editing ? 'Guardar cambios' : 'Crear trabajo'}
+              {submitting ? 'Guardando...' : editing ? 'Guardar cambios' : 'Crear trabajo'}
             </button>
             <button
               type="button"
