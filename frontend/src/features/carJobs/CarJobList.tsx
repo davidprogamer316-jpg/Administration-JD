@@ -26,6 +26,8 @@ const PAPER_OPTIONS = [
   { value: 'premium', label: 'Premium Film' },
   { value: 'ceramic', label: 'Ceramic Film' },
   { value: 'ultra_ceramic', label: 'Ultra Ceramic Film' },
+  { value: 'architectural_black', label: 'Architectural Black Film' },
+  { value: 'architectural_silver', label: 'Architectural Silver Film' },
   { value: 'none', label: 'DOES NOT APPLY' },
 ];
 
