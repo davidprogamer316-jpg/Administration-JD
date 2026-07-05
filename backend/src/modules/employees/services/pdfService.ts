@@ -94,7 +94,7 @@ export async function generateEmployeePdf(
 
         // ── Period header ──
         doc.fontSize(12).font('Helvetica-Bold').fillColor('#1B1B2F');
-        doc.text(label);
+        doc.text(label, ML, doc.y, { width: CW });
         doc.moveDown(0.3);
 
         // ── Column headers ──
@@ -151,7 +151,7 @@ export async function generateEmployeePdf(
 
     doc.moveDown(0.5);
     doc.fontSize(14).font('Helvetica-Bold').fillColor('#1B1B2F');
-    doc.text(`Total ganado en el mes: ${fm(totalEarned)}`, { align: 'center' });
+    doc.text(`Total ganado en el mes: ${fm(totalEarned)}`, ML, doc.y, { width: CW, align: 'center' });
     doc.moveDown(0.5);
 
     doc.fontSize(8).fillColor('#8B7D8B');
