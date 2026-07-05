@@ -54,6 +54,17 @@ export default function VinScanner({ onScan }: VinScannerProps) {
     }
   }
 
+  async function tryDecode(dataUrl: string): Promise<string | null> {
+    try {
+      const { BrowserMultiFormatReader } = await import('@zxing/library');
+      const reader = new BrowserMultiFormatReader();
+      const result = await reader.decodeFromImageUrl(dataUrl);
+      return result?.getText()?.replace(/\*/g, '').trim() || null;
+    } catch {
+      return null;
+    }
+  }
+
   async function takePhoto() {
     const video = videoRef.current;
     const stream = streamRef.current;
@@ -67,18 +78,56 @@ export default function VinScanner({ onScan }: VinScannerProps) {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       const ctx = canvas.getContext('2d')!;
+
+      // Capture frame
       ctx.drawImage(video, 0, 0);
       const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
 
-      const { BrowserMultiFormatReader } = await import('@zxing/library');
-      const reader = new BrowserMultiFormatReader();
-      const result = await reader.decodeFromImageUrl(dataUrl);
-      const text = result?.getText()?.replace(/\*/g, '').trim();
+      // Try original
+      let text = await tryDecode(dataUrl);
+
+      // Try inverted (for dark-background barcodes)
+      if (!text) {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i < imageData.data.length; i += 4) {
+          imageData.data[i] = 255 - imageData.data[i];
+          imageData.data[i + 1] = 255 - imageData.data[i + 1];
+          imageData.data[i + 2] = 255 - imageData.data[i + 2];
+        }
+        ctx.putImageData(imageData, 0, 0);
+        text = await tryDecode(canvas.toDataURL('image/jpeg', 0.95));
+      }
+
+      // Try high contrast (grayscale + stretch)
+      if (!text) {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        let min = 255, max = 0;
+        for (let i = 0; i < imageData.data.length; i += 4) {
+          const gray = 0.299 * imageData.data[i] + 0.587 * imageData.data[i + 1] + 0.114 * imageData.data[i + 2];
+          imageData.data[i] = gray;
+          imageData.data[i + 1] = gray;
+          imageData.data[i + 2] = gray;
+          if (gray < min) min = gray;
+          if (gray > max) max = gray;
+        }
+        const range = max - min;
+        if (range > 10) {
+          for (let i = 0; i < imageData.data.length; i += 4) {
+            const stretched = ((imageData.data[i] - min) / range) * 255;
+            imageData.data[i] = stretched;
+            imageData.data[i + 1] = stretched;
+            imageData.data[i + 2] = stretched;
+          }
+          ctx.putImageData(imageData, 0, 0);
+          text = await tryDecode(canvas.toDataURL('image/jpeg', 0.95));
+        }
+      }
+
       if (text) {
         onScan(text);
         closeCamera();
       } else {
-        setError('No se detectó ningún código de barras');
+        setError('No se detectó ningún código de barras. Intenta de nuevo con mejor iluminación.');
         setProcessing(false);
       }
     } catch {
