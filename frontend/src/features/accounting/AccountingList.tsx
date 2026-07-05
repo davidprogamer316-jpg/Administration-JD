@@ -120,9 +120,15 @@ export default function AccountingList() {
 
   const tree = useMemo(() => groupPeriods(periods), [periods]);
 
+  const currentYear = new Date().getUTCFullYear();
+  const currentYearPeriods = useMemo(
+    () => periods.filter((p) => new Date(p.periodStartDate).getUTCFullYear() === currentYear),
+    [periods, currentYear]
+  );
+
   const totals = useMemo(() => {
     const t = { income: 0, expenses: 0, dddg: 0, profit: 0, neto: 0, boss: 0 };
-    for (const p of periods) {
+    for (const p of currentYearPeriods) {
       t.income += p.income;
       t.expenses += p.expenses;
       t.dddg += p.dddg;
@@ -234,7 +240,7 @@ export default function AccountingList() {
           </div>
           <div>
             <p className="text-xs text-text-muted uppercase tracking-wider">Periodos</p>
-            <p className="text-sm font-semibold text-text-body">{periods.length}</p>
+            <p className="text-sm font-semibold text-text-body">{currentYearPeriods.length}</p>
           </div>
         </div>
       </div>
