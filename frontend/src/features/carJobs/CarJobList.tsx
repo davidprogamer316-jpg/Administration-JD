@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useMemo, type FormEvent } from 'react';
 import { api } from '@/lib/api';
 import type { CarJob, QuincenaGroup } from '@/types';
 import { Plus, Pencil, Trash2, Search, FileDown, FileText, ChevronDown } from 'lucide-react';
@@ -34,7 +34,9 @@ const PAPER_OPTIONS = [
 export default function CarJobList() {
   const [groupedData, setGroupedData] = useState<QuincenaGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const [expandedYear, setExpandedYear] = useState<string | null>(null);
+  const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
+  const [expandedPeriod, setExpandedPeriod] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<CarJob | null>(null);
   const [startDate, setStartDate] = useState('');
@@ -77,7 +79,9 @@ export default function CarJobList() {
       const qs = params.toString();
       const res = await api.get<QuincenaGroup[]>(`/car-jobs/grouped${qs ? `?${qs}` : ''}`);
       setGroupedData(res);
-      setExpandedKey(null);
+      setExpandedYear(null);
+      setExpandedMonth(null);
+      setExpandedPeriod(null);
     } catch {
       setError('Error al cargar trabajos');
     } finally {
@@ -88,6 +92,44 @@ export default function CarJobList() {
   useEffect(() => {
     load();
   }, []);
+
+  const tree = useMemo(() => {
+    const map = new Map<string, { label: string; periods: QuincenaGroup[] }>();
+    for (const g of groupedData) {
+      const d = new Date(g.periodStartDate);
+      const year = d.getUTCFullYear();
+      const month = d.getUTCMonth();
+      const yearKey = String(year);
+      const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+      const monthLabel = new Date(year, month).toLocaleDateString('es-ES', { month: 'long' });
+      if (!map.has(yearKey)) {
+        map.set(yearKey, { label: yearKey, periods: [] });
+      }
+    }
+    const years = Array.from(map.entries()).sort(([a], [b]) => Number(b) - Number(a));
+    const result: { year: string; months: { monthKey: string; label: string; periods: QuincenaGroup[] }[] }[] = [];
+    for (const [yearKey] of years) {
+      const monthsMap = new Map<string, { label: string; periods: QuincenaGroup[] }>();
+      for (const g of groupedData) {
+        const d = new Date(g.periodStartDate);
+        if (d.getUTCFullYear() !== Number(yearKey)) continue;
+        const month = d.getUTCMonth();
+        const monthKey = `${yearKey}-${String(month).padStart(2, '0')}`;
+        const monthLabel = new Date(d.getUTCFullYear(), month).toLocaleDateString('es-ES', { month: 'long' });
+        if (!monthsMap.has(monthKey)) {
+          monthsMap.set(monthKey, { label: monthLabel, periods: [] });
+        }
+        monthsMap.get(monthKey)!.periods.push(g);
+      }
+      result.push({
+        year: yearKey,
+        months: Array.from(monthsMap.entries())
+          .sort(([a], [b]) => b.localeCompare(a))
+          .map(([monthKey, v]) => ({ ...v, monthKey })),
+      });
+    }
+    return result;
+  }, [groupedData]);
 
   function handleFilter(e: FormEvent) {
     e.preventDefault();
@@ -367,119 +409,120 @@ export default function CarJobList() {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {groupedData.map((group) => (
-            <div
-              key={group.periodStartDate}
-              className="rounded-xl border border-border shadow-sm bg-surface overflow-hidden"
-            >
+        <div className="rounded-xl border border-border shadow-sm bg-surface overflow-hidden">
+          {tree.map((yearGroup) => (
+            <div key={yearGroup.year} className="border-b border-border last:border-0">
               <button
-                onClick={() =>
-                  setExpandedKey(
-                    expandedKey === group.periodStartDate ? null : group.periodStartDate
-                  )
-                }
-                className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-bg-page transition-colors"
+                onClick={() => setExpandedYear(expandedYear === yearGroup.year ? null : yearGroup.year)}
+                className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-bg-page transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <ChevronDown
                     size={18}
-                    className={`shrink-0 text-text-muted transition-transform ${
-                      expandedKey === group.periodStartDate ? '' : '-rotate-90'
-                    }`}
+                    className={`shrink-0 text-text-muted transition-transform ${expandedYear === yearGroup.year ? '' : '-rotate-90'}`}
                   />
-                  <span className="font-semibold text-text-body truncate">
-                    {group.label}
-                  </span>
-                </div>
-                <div className="flex items-center gap-4 text-sm text-text-muted shrink-0 ml-4">
-                  <span>
-                    {group.totalJobs} trabajo{group.totalJobs !== 1 ? 's' : ''}
-                  </span>
-                  <span className="font-medium text-text-body">
-                    {formatMoney(group.totalPayment)}
-                  </span>
+                  <span className="font-semibold text-text-body truncate">{yearGroup.year}</span>
                 </div>
               </button>
-              {expandedKey === group.periodStartDate && (
-                <div className="overflow-x-auto border-t border-border">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
-                          Fecha
-                        </th>
-                        <th className="text-left px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
-                          VIN
-                        </th>
-                        <th className="text-left px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
-                          Descripción
-                        </th>
-                        <th className="text-right px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
-                          Pago
-                        </th>
-                        <th className="text-center px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
-                          Estado
-                        </th>
-                        <th className="text-right px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">
-                          Acciones
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {group.jobs.map((job, i) => (
-                        <tr
-                          key={job._id}
-                          onClick={() => setDetailJob(job)}
-                          className={`border-b border-border even:bg-bg-page cursor-pointer hover:bg-accent/5 transition-colors`}
-                        >
-                          <td className="px-4 py-3 text-sm text-text-body">
-                            {formatDate(job.date)}
-                          </td>
-                          <td className="px-4 py-3 text-sm font-mono text-text-body">
-                            {job.vin}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-text-body max-w-xs truncate">
-                            {job.description}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-text-body text-right font-medium">
-                            {formatMoney(job.payment)}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            {job.closed ? (
-                              <span className="rounded-full px-3 py-1 text-xs font-medium bg-gray-100 text-gray-500">
-                                Cerrado
-                              </span>
-                            ) : (
-                              <span className="rounded-full px-3 py-1 text-xs font-medium bg-emerald-100 text-emerald-700">
-                                Abierto
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-end gap-1">
+              {expandedYear === yearGroup.year && (
+                <div className="border-t border-border">
+                  {yearGroup.months.map((monthGroup) => (
+                    <div key={monthGroup.monthKey} className="border-b border-border last:border-0">
+                      <button
+                        onClick={() => setExpandedMonth(expandedMonth === monthGroup.monthKey ? null : monthGroup.monthKey)}
+                        className="w-full flex items-center justify-between px-8 py-3 text-left hover:bg-bg-page transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <ChevronDown
+                            size={16}
+                            className={`shrink-0 text-text-muted transition-transform ${expandedMonth === monthGroup.monthKey ? '' : '-rotate-90'}`}
+                          />
+                          <span className="text-sm font-medium text-text-body">{monthGroup.label}</span>
+                        </div>
+                      </button>
+                      {expandedMonth === monthGroup.monthKey && (
+                        <div className="border-t border-border bg-bg-page/50">
+                          {monthGroup.periods.map((group) => (
+                            <div key={group.periodStartDate} className="border-b border-border last:border-0">
                               <button
-                                onClick={() => startEdit(job)}
-                                className="p-1.5 text-text-muted hover:text-accent transition-colors"
-                                title="Editar"
-                                disabled={job.closed}
+                                onClick={() => setExpandedPeriod(expandedPeriod === group.periodStartDate ? null : group.periodStartDate)}
+                                className="w-full flex items-center justify-between px-12 py-3 text-left hover:bg-bg-page transition-colors cursor-pointer"
                               >
-                                <Pencil size={16} />
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <ChevronDown
+                                    size={15}
+                                    className={`shrink-0 text-text-muted transition-transform ${expandedPeriod === group.periodStartDate ? '' : '-rotate-90'}`}
+                                  />
+                                  <span className="text-sm text-accent font-medium">{group.label}</span>
+                                </div>
+                                <div className="flex items-center gap-4 text-sm text-text-muted shrink-0 ml-4">
+                                  <span>{group.totalJobs} trabajo{group.totalJobs !== 1 ? 's' : ''}</span>
+                                  <span className="font-medium text-text-body">{formatMoney(group.totalPayment)}</span>
+                                </div>
                               </button>
-                              <button
-                                onClick={() => handleDelete(job)}
-                                className="p-1.5 text-text-muted hover:text-danger transition-colors"
-                                title="Eliminar"
-                                disabled={job.closed}
-                              >
-                                <Trash2 size={16} />
-                              </button>
+                              {expandedPeriod === group.periodStartDate && (
+                                <div className="overflow-x-auto border-t border-border">
+                                  <table className="w-full">
+                                    <thead>
+                                      <tr className="border-b border-border">
+                                        <th className="text-left px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">Fecha</th>
+                                        <th className="text-left px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">VIN</th>
+                                        <th className="text-left px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">Descripción</th>
+                                        <th className="text-right px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">Pago</th>
+                                        <th className="text-center px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">Estado</th>
+                                        <th className="text-right px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">Acciones</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {group.jobs.map((job, i) => (
+                                        <tr
+                                          key={job._id}
+                                          onClick={() => setDetailJob(job)}
+                                          className={`border-b border-border even:bg-bg-page cursor-pointer hover:bg-accent/5 transition-colors`}
+                                        >
+                                          <td className="px-4 py-3 text-sm text-text-body">{formatDate(job.date)}</td>
+                                          <td className="px-4 py-3 text-sm font-mono text-text-body">{job.vin}</td>
+                                          <td className="px-4 py-3 text-sm text-text-body max-w-xs truncate">{job.description}</td>
+                                          <td className="px-4 py-3 text-sm text-text-body text-right font-medium">{formatMoney(job.payment)}</td>
+                                          <td className="px-4 py-3 text-center">
+                                            {job.closed ? (
+                                              <span className="rounded-full px-3 py-1 text-xs font-medium bg-gray-100 text-gray-500">Cerrado</span>
+                                            ) : (
+                                              <span className="rounded-full px-3 py-1 text-xs font-medium bg-emerald-100 text-emerald-700">Abierto</span>
+                                            )}
+                                          </td>
+                                          <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                                            <div className="flex items-center justify-end gap-1">
+                                              <button
+                                                onClick={() => startEdit(job)}
+                                                className="p-1.5 text-text-muted hover:text-accent transition-colors"
+                                                title="Editar"
+                                                disabled={job.closed}
+                                              >
+                                                <Pencil size={16} />
+                                              </button>
+                                              <button
+                                                onClick={() => handleDelete(job)}
+                                                className="p-1.5 text-text-muted hover:text-danger transition-colors"
+                                                title="Eliminar"
+                                                disabled={job.closed}
+                                              >
+                                                <Trash2 size={16} />
+                                              </button>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
