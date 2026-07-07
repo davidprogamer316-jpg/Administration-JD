@@ -14,6 +14,8 @@ export interface ICarJob extends Document {
   closed: boolean;
   paperTypes: string[];
   employeeShares: IEmployeeShare[];
+  paymentMethod?: string;
+  cardSurcharge: number;
 }
 
 const EmployeeShareSchema = new Schema<IEmployeeShare>(
@@ -34,6 +36,8 @@ const CarJobSchema = new Schema<ICarJob>(
     closed: { type: Boolean, default: false },
     paperTypes: { type: [String], enum: ['premium', 'ceramic', 'ultra_ceramic', 'architectural_black', 'architectural_silver'], default: [] },
     employeeShares: { type: [EmployeeShareSchema], default: [] },
+    paymentMethod: { type: String, enum: ['efectivo', 'credito_debito', 'transferencia'], default: 'efectivo' },
+    cardSurcharge: { type: Number, default: 0, min: 0 },
   },
   { timestamps: true }
 );

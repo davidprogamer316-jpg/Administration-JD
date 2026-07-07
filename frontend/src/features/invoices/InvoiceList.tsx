@@ -86,13 +86,19 @@ export default function InvoiceList() {
     const items = selectedJobIds
       .map((id) => carJobs.find((j) => j._id === id))
       .filter((j): j is CarJob => !!j)
-      .map((j) => ({
-        description: j.description,
-        amount: j.payment,
-        carJobId: j._id,
-        paperTypes: j.paperTypes || [],
-        date: j.date,
-      }));
+      .flatMap((j) => {
+        const mainItem = {
+          description: j.description,
+          amount: j.payment,
+          carJobId: j._id,
+          paperTypes: j.paperTypes || [],
+          date: j.date,
+        };
+        const surchargeItem = j.paymentMethod === 'credito_debito' && j.cardSurcharge > 0
+          ? { description: `Card processing fee (3.6%) — ${j.vin}`, amount: j.cardSurcharge, carJobId: j._id }
+          : null;
+        return surchargeItem ? [mainItem, surchargeItem] : [mainItem];
+      });
 
     try {
       await api.post('/invoices', { clientName, items });
@@ -224,6 +230,11 @@ export default function InvoiceList() {
                           <p className="text-text-muted text-xs">
                             {formatDate(job.date)} — {formatMoney(job.payment)}
                           </p>
+                          {job.paymentMethod === 'credito_debito' && (
+                            <p className="text-xs text-text-muted mt-0.5">
+                              Crédito/Débito (+3.6%: {formatMoney(job.cardSurcharge)})
+                            </p>
+                          )}
                           {job.paperTypes && job.paperTypes.length > 0 && (
                             <p className="text-text-muted text-xs mt-0.5">
                               {job.paperTypes.map((pt) => {

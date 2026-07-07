@@ -58,6 +58,8 @@ export interface CarJob {
   payment: number;
   closed: boolean;
   paperTypes: string[];
+  paymentMethod?: string;
+  cardSurcharge: number;
   employeeShares: Array<{
     employeeId: string;
     employeeName: string;

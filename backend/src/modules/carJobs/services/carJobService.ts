@@ -118,6 +118,7 @@ export async function create(data: {
   description: string;
   payment: number;
   paperTypes?: string[];
+  paymentMethod?: string;
 }) {
   const jobDate = new Date(data.date);
 
@@ -130,6 +131,10 @@ export async function create(data: {
     );
   }
 
+  const cardSurcharge = data.paymentMethod === 'credito_debito'
+    ? Math.round(data.payment * 0.036 * 100) / 100
+    : 0;
+
   const job = await CarJob.create({
     date: jobDate,
     vin: data.vin,
@@ -137,6 +142,8 @@ export async function create(data: {
     payment: data.payment,
     paperTypes: data.paperTypes || [],
     employeeShares: await snapshotEmployeeShares(),
+    paymentMethod: data.paymentMethod || 'efectivo',
+    cardSurcharge,
   });
 
   await recalculateById(period._id.toString());
@@ -146,7 +153,7 @@ export async function create(data: {
 
 export async function update(
   id: string,
-  data: { date?: string; vin?: string; description?: string; payment?: number; paperTypes?: string[] }
+  data: { date?: string; vin?: string; description?: string; payment?: number; paperTypes?: string[]; paymentMethod?: string }
 ) {
   const job = await CarJob.findById(id);
   if (!job) {
@@ -168,6 +175,12 @@ export async function update(
   if (data.description !== undefined) job.description = data.description;
   if (data.payment !== undefined) job.payment = data.payment;
   if (data.paperTypes !== undefined) job.paperTypes = data.paperTypes;
+  if (data.paymentMethod !== undefined) job.paymentMethod = data.paymentMethod;
+  const effectivePayment = data.payment !== undefined ? data.payment : job.payment;
+  const effectiveMethod = data.paymentMethod !== undefined ? data.paymentMethod : job.paymentMethod;
+  job.cardSurcharge = effectiveMethod === 'credito_debito'
+    ? Math.round(effectivePayment * 0.036 * 100) / 100
+    : 0;
   job.employeeShares = await snapshotEmployeeShares();
 
   await job.save();

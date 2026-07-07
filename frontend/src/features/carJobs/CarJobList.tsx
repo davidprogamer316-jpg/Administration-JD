@@ -31,6 +31,14 @@ const PAPER_OPTIONS = [
   { value: 'none', label: 'DOES NOT APPLY' },
 ];
 
+const PAYMENT_METHODS = [
+  { value: 'efectivo', label: 'Efectivo' },
+  { value: 'credito_debito', label: 'Crédito/Débito' },
+  { value: 'transferencia', label: 'Transferencia' },
+];
+
+const CARD_SURCHARGE_RATE = 0.036;
+
 export default function CarJobList() {
   const [groupedData, setGroupedData] = useState<QuincenaGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +60,7 @@ export default function CarJobList() {
   const [formVin, setFormVin] = useState('');
   const [formDesc, setFormDesc] = useState('');
   const [formPayment, setFormPayment] = useState('');
+  const [formPaymentMethod, setFormPaymentMethod] = useState('efectivo');
   const [formPaperTypes, setFormPaperTypes] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -141,6 +150,7 @@ export default function CarJobList() {
     setFormVin('');
     setFormDesc('');
     setFormPayment('');
+    setFormPaymentMethod('efectivo');
     setFormPaperTypes([]);
     setEditing(null);
     setShowForm(false);
@@ -154,6 +164,7 @@ export default function CarJobList() {
     setFormVin(job.vin);
     setFormDesc(job.description);
     setFormPayment(job.payment.toString());
+    setFormPaymentMethod(job.paymentMethod || 'efectivo');
     setFormPaperTypes(job.paperTypes || []);
     setShowForm(true);
   }
@@ -169,6 +180,7 @@ export default function CarJobList() {
         vin: formVin,
         description: formDesc,
         payment: parseFloat(formPayment),
+        paymentMethod: formPaymentMethod === 'efectivo' ? undefined : formPaymentMethod,
         paperTypes: formPaperTypes.filter((t) => t !== 'none'),
       };
 
@@ -199,18 +211,26 @@ export default function CarJobList() {
   async function handleGenerateInvoice(e: FormEvent) {
     e.preventDefault();
     if (!detailJob) return;
+    const items: Array<{ description: string; amount: number; carJobId?: string; paperTypes?: string[]; date?: string }> = [
+      {
+        description: detailJob.description,
+        amount: detailJob.payment,
+        carJobId: detailJob._id,
+        paperTypes: detailJob.paperTypes || [],
+        date: detailJob.date,
+      },
+    ];
+    if (detailJob.paymentMethod === 'credito_debito' && detailJob.cardSurcharge > 0) {
+      items.push({
+        description: `Card processing fee (3.6%) — ${detailJob.vin}`,
+        amount: detailJob.cardSurcharge,
+        carJobId: detailJob._id,
+      });
+    }
     try {
       await api.post('/invoices', {
         clientName: invoiceClientName,
-        items: [
-          {
-            description: detailJob.description,
-            amount: detailJob.payment,
-            carJobId: detailJob._id,
-            paperTypes: detailJob.paperTypes || [],
-            date: detailJob.date,
-          },
-        ],
+        items,
       });
       setInvoiceMsg(`Factura generada para ${invoiceClientName}`);
       setInvoiceClientName('');
@@ -385,6 +405,26 @@ export default function CarJobList() {
                 required
                 className="w-full rounded-lg border border-border bg-bg-page px-3.5 py-2.5 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-colors"
               />
+            </div>
+            <div>
+              <label className="block text-text-muted text-sm mb-1">Método de pago</label>
+              <select
+                value={formPaymentMethod}
+                onChange={(e) => setFormPaymentMethod(e.target.value)}
+                className="w-full rounded-lg border border-border bg-bg-page px-3.5 py-2.5 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-colors"
+              >
+                {PAYMENT_METHODS.map((m) => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+              {formPaymentMethod === 'credito_debito' && formPayment && (
+                <p className="text-xs text-text-muted mt-1.5">
+                  Recargo por tarjeta (3.6%):{' '}
+                  <span className="font-medium text-text-body">
+                    {formatMoney(Math.round(parseFloat(formPayment) * CARD_SURCHARGE_RATE * 100) / 100)}
+                  </span>
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-text-muted text-sm mb-2">Film used</label>
@@ -600,6 +640,18 @@ export default function CarJobList() {
                 {formatMoney(detailJob.payment)}
               </p>
             </div>
+            {detailJob.paymentMethod && detailJob.paymentMethod !== 'efectivo' && (
+              <div>
+                <p className="text-text-muted text-xs uppercase tracking-wider mb-0.5">
+                  Método de pago
+                </p>
+                <p className="text-text-body font-medium">
+                  {detailJob.paymentMethod === 'credito_debito'
+                    ? `Crédito/Débito (recargo 3.6%: ${formatMoney(detailJob.cardSurcharge)})`
+                    : 'Transferencia'}
+                </p>
+              </div>
+            )}
             {(detailJob.paperTypes?.length ?? 0) > 0 && (
               <div>
                 <p className="text-text-muted text-xs uppercase tracking-wider mb-0.5">
