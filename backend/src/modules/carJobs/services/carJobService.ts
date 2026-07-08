@@ -100,7 +100,7 @@ export async function listGrouped(filters?: { startDate?: string; endDate?: stri
   return groups.map((g) => ({
     ...g,
     totalJobs: g.jobs.length,
-    totalPayment: g.jobs.reduce((sum, j) => sum + j.payment, 0),
+    totalPayment: Math.round(g.jobs.reduce((sum, j) => sum + j.payment, 0) * 100) / 100,
   }));
 }
 
@@ -139,7 +139,7 @@ export async function create(data: {
     date: jobDate,
     vin: data.vin,
     description: data.description,
-    payment: data.payment,
+    payment: Math.round(data.payment * 100) / 100,
     paperTypes: data.paperTypes || [],
     employeeShares: await snapshotEmployeeShares(),
     paymentMethod: data.paymentMethod || 'efectivo',
@@ -173,7 +173,7 @@ export async function update(
   if (data.date) job.date = new Date(data.date);
   if (data.vin !== undefined) job.vin = data.vin;
   if (data.description !== undefined) job.description = data.description;
-  if (data.payment !== undefined) job.payment = data.payment;
+  if (data.payment !== undefined) job.payment = Math.round(data.payment * 100) / 100;
   if (data.paperTypes !== undefined) job.paperTypes = data.paperTypes;
   if (data.paymentMethod !== undefined) job.paymentMethod = data.paymentMethod;
   const effectivePayment = data.payment !== undefined ? data.payment : job.payment;

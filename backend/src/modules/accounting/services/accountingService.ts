@@ -6,7 +6,7 @@ async function recalculate(period: IAccountingPeriod) {
   const jobs = await CarJob.find({
     date: { $gte: period.periodStartDate, $lte: period.periodEndDate },
   });
-  period.income = jobs.reduce((sum, j) => sum + j.payment, 0);
+  period.income = Math.round(jobs.reduce((sum, j) => sum + j.payment, 0) * 100) / 100;
 
   // Auto-compute fixed expense halves
   const fixedExpenses = await FixedExpense.find();
@@ -17,9 +17,9 @@ async function recalculate(period: IAccountingPeriod) {
 
   const fixedTotal = period.fixedExpenses.reduce((sum, fe) => sum + fe.amount, 0);
   period.expenses =
-    period.expenseItems.reduce((sum, item) => sum + item.amount, 0) + fixedTotal;
+    Math.round((period.expenseItems.reduce((sum, item) => sum + item.amount, 0) + fixedTotal) * 100) / 100;
 
-  period.dddg = Math.max(0, period.income - period.expenses);
+  period.dddg = Math.max(0, Math.round((period.income - period.expenses) * 100) / 100);
 
   if (period.dddg > 0) {
     period.companyProfit = Math.round(period.dddg * env.companyProfitRate * 100) / 100;
@@ -27,7 +27,7 @@ async function recalculate(period: IAccountingPeriod) {
     period.companyProfit = 0;
   }
 
-  period.netToDistribute = period.dddg - period.companyProfit;
+  period.netToDistribute = Math.round((period.dddg - period.companyProfit) * 100) / 100;
 
   // Aggregate employee earnings per job using each job's snapshot
   const empMap = new Map<string, { name: string; percentage: number; amount: number }>();

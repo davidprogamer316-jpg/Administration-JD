@@ -68,7 +68,7 @@ export async function create(data: {
   const count = await Invoice.countDocuments();
   const invoiceNumber = `FAC-${String(count + 1).padStart(4, '0')}`;
 
-  const total = data.items.reduce((sum, item) => sum + item.amount, 0);
+  const total = Math.round(data.items.reduce((sum, item) => sum + item.amount, 0) * 100) / 100;
 
   const invoice = await Invoice.create({
     invoiceNumber,
