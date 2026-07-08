@@ -22,7 +22,7 @@ async function recalculate(period: IAccountingPeriod) {
   period.dddg = Math.max(0, period.income - period.expenses);
 
   if (period.dddg > 0) {
-    period.companyProfit = period.dddg * env.companyProfitRate;
+    period.companyProfit = Math.round(period.dddg * env.companyProfitRate * 100) / 100;
   } else {
     period.companyProfit = 0;
   }
