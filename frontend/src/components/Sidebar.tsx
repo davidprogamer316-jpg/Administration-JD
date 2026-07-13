@@ -42,11 +42,11 @@ export default function Sidebar() {
       )}
 
       <button
-        className="fixed top-4 left-4 z-50 md:hidden p-2 rounded-lg bg-brand text-white"
+        className="fixed top-4 left-4 z-50 md:hidden p-3 rounded-lg bg-brand text-white"
         onClick={() => setOpen(!open)}
         aria-label="Toggle menu"
       >
-        {open ? <X size={20} /> : <Menu size={20} />}
+        {open ? <X size={24} /> : <Menu size={24} />}
       </button>
 
       <aside
