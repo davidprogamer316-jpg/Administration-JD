@@ -34,7 +34,7 @@ const CarJobSchema = new Schema<ICarJob>(
     description: { type: String, required: true, trim: true },
     payment: { type: Number, required: true, min: 0 },
     closed: { type: Boolean, default: false },
-    paperTypes: { type: [String], enum: ['premium', 'ceramic', 'ultra_ceramic', 'architectural_black', 'architectural_silver'], default: [] },
+    paperTypes: { type: [String], enum: ['premium', 'ceramic', 'ultra_ceramic', 'architectural_black', 'architectural_silver', 'ceramica_d'], default: [] },
     employeeShares: { type: [EmployeeShareSchema], default: [] },
     paymentMethod: { type: String, enum: ['efectivo', 'credito_debito', 'transferencia'], default: 'efectivo' },
     cardSurcharge: { type: Number, default: 0, min: 0 },

@@ -30,6 +30,10 @@ const PAPER_INFO: Record<string, { label: string; specs: string }> = {
     label: 'Ultra Ceramic Film',
     specs: 'Solar rejection: 98%, UV protection: 100%, Warranty: 10 years',
   },
+  ceramica_d: {
+    label: 'Ceramic Film',
+    specs: 'Solar rejection: 70%, UV protection: 100%, Warranty: 2 years',
+  },
 };
 
 function formatMoney(n: number): string {

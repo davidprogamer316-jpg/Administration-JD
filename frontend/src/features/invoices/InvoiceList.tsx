@@ -241,6 +241,7 @@ export default function InvoiceList() {
                                 const labels: Record<string, string> = {
                                   premium: 'Premium',
                                   ceramic: 'Ceramic',
+                                  ceramica_d: 'Ceramic',
                                   ultra_ceramic: 'Ultra Ceramic',
                                   architectural_black: 'Architectural Black',
                                   architectural_silver: 'Architectural Silver',
