@@ -17,7 +17,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   if (user) {
-    router.replace('/dashboard');
+    router.replace('/');
     return null;
   }
 
@@ -29,7 +29,7 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      router.replace('/dashboard');
+      router.replace('/');
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 423) {

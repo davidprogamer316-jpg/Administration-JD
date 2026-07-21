@@ -9,7 +9,7 @@ import { Invoice } from '../models/index.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const COMPANY_NAME = 'Windows Tinting JD';
+const COMPANY_NAME = 'Windows Tinting JD Corp';
 const COMPANY_TAGLINE = 'Mobile tinting service — we come to you';
 const COMPANY_PHONE = '786 793 4440';
 const COMPANY_URL = 'https://tinting-film.com';
