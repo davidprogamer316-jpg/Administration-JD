@@ -244,20 +244,6 @@ export default function CarJobList() {
     }
   }
 
-  const currentYear = new Date().getUTCFullYear();
-  const currentYearGroups = useMemo(
-    () => groupedData.filter((g) => new Date(g.periodStartDate).getUTCFullYear() === currentYear),
-    [groupedData, currentYear]
-  );
-  const yearTotals = useMemo(() => {
-    let jobs = 0, payment = 0;
-    for (const g of currentYearGroups) {
-      jobs += g.totalJobs;
-      payment += g.totalPayment;
-    }
-    return { jobs, payment, periods: currentYearGroups.length };
-  }, [currentYearGroups]);
-
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -268,23 +254,6 @@ export default function CarJobList() {
 
   return (
     <div>
-      <div className="rounded-xl border border-border shadow-sm bg-surface p-4 mb-6">
-        <div className="grid grid-cols-3 sm:grid-cols-3 gap-4 text-center">
-          <div>
-            <p className="text-xs text-text-muted uppercase tracking-wider">Trabajos</p>
-            <p className="text-sm font-semibold text-text-body">{yearTotals.jobs}</p>
-          </div>
-          <div>
-            <p className="text-xs text-text-muted uppercase tracking-wider">Ingresos</p>
-            <p className="text-sm font-semibold text-text-body">{formatMoney(yearTotals.payment)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-text-muted uppercase tracking-wider">Periodos</p>
-            <p className="text-sm font-semibold text-text-body">{yearTotals.periods}</p>
-          </div>
-        </div>
-      </div>
-
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <form onSubmit={handleFilter} className="flex flex-wrap items-center gap-2">
           <DateInput
