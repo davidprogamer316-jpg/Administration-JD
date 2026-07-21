@@ -22,10 +22,6 @@ function formatDate(dateStr: string) {
   });
 }
 
-function formatMoney(n: number) {
-  return `$${n.toLocaleString('es-CO', { minimumFractionDigits: 2 })}`;
-}
-
 function periodLabel(p: AccountingPeriod) {
   return `Q${p.periodNumber} (${formatDate(p.periodStartDate)} - ${formatDate(p.periodEndDate)})`;
 }
@@ -120,25 +116,6 @@ export default function AccountingList() {
 
   const tree = useMemo(() => groupPeriods(periods), [periods]);
 
-  const currentYear = new Date().getUTCFullYear();
-  const currentYearPeriods = useMemo(
-    () => periods.filter((p) => new Date(p.periodStartDate).getUTCFullYear() === currentYear),
-    [periods, currentYear]
-  );
-
-  const totals = useMemo(() => {
-    const t = { income: 0, expenses: 0, dddg: 0, profit: 0, neto: 0, boss: 0 };
-    for (const p of currentYearPeriods) {
-      t.income += p.income;
-      t.expenses += p.expenses;
-      t.dddg += p.dddg;
-      t.profit += p.companyProfit;
-      t.neto += p.netToDistribute;
-      t.boss += p.bossAmount;
-    }
-    return t;
-  }, [periods]);
-
   function toggleYear(year: number) {
     setExpandedYears((prev) => {
       const next = new Set(prev);
@@ -210,40 +187,6 @@ export default function AccountingList() {
           {error}
         </div>
       )}
-
-      {/* Totals summary */}
-      <div className="rounded-xl border border-border shadow-sm bg-surface p-4 mb-6">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4 text-center">
-          <div>
-            <p className="text-xs text-text-muted uppercase tracking-wider">Ingresos</p>
-            <p className="text-sm font-semibold text-text-body">{formatMoney(totals.income)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-text-muted uppercase tracking-wider">Gastos</p>
-            <p className="text-sm font-semibold text-text-body">{formatMoney(totals.expenses)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-text-muted uppercase tracking-wider">DDDG</p>
-            <p className="text-sm font-semibold text-text-body">{formatMoney(totals.dddg)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-text-muted uppercase tracking-wider">Ganancia</p>
-            <p className="text-sm font-semibold text-text-body">{formatMoney(totals.profit)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-text-muted uppercase tracking-wider">Neto</p>
-            <p className="text-sm font-semibold text-text-body">{formatMoney(totals.neto)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-text-muted uppercase tracking-wider">Jefe</p>
-            <p className="text-sm font-semibold text-text-body">{formatMoney(totals.boss)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-text-muted uppercase tracking-wider">Periodos</p>
-            <p className="text-sm font-semibold text-text-body">{currentYearPeriods.length}</p>
-          </div>
-        </div>
-      </div>
 
       {periods.length === 0 ? (
         <div className="rounded-xl border border-border p-12 shadow-sm bg-surface text-center">
