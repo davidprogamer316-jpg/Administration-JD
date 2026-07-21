@@ -52,19 +52,31 @@ function formatMoney(n: number) {
 
 const COLORS = ['#D4A84B', '#5B8C6B', '#B85C5C', '#2A2A45', '#8B7D8B'];
 
+function getCurrentQuincena() {
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  const day = now.getUTCDate();
+
+  if (day <= 15) {
+    return {
+      start: new Date(Date.UTC(year, month, 1)).toISOString().split('T')[0],
+      end: new Date(Date.UTC(year, month, 15)).toISOString().split('T')[0],
+    };
+  }
+  return {
+    start: new Date(Date.UTC(year, month, 16)).toISOString().split('T')[0],
+    end: new Date(Date.UTC(year, month + 1, 0)).toISOString().split('T')[0],
+  };
+}
+
 export default function DashboardView() {
-  const today = new Date();
-  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  const quincena = getCurrentQuincena();
 
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [startDate, setStartDate] = useState(
-    firstDay.toISOString().split('T')[0]
-  );
-  const [endDate, setEndDate] = useState(
-    lastDay.toISOString().split('T')[0]
-  );
+  const [startDate, setStartDate] = useState(quincena.start);
+  const [endDate, setEndDate] = useState(quincena.end);
 
   async function load() {
     setLoading(true);
