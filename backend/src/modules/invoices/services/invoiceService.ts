@@ -9,7 +9,7 @@ import { Invoice } from '../models/index.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const COMPANY_NAME = 'Windows Tinting JD Corp';
+const COMPANY_NAME = 'WINDOWS TINTING JD CORP';
 const COMPANY_TAGLINE = 'Mobile tinting service — we come to you';
 const COMPANY_PHONE = '786 793 4440';
 const COMPANY_URL = 'https://tinting-film.com';
@@ -141,7 +141,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
   // Gap between logo and header
   pageH += 5;
   // Company header (name + tagline + phone)
-  pageH += 16 + textH(COMPANY_TAGLINE, CONTENT_W, 10) + textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 10);
+  pageH += textH(COMPANY_NAME, CONTENT_W, 18) + textH(COMPANY_TAGLINE, CONTENT_W, 10) + textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 10);
   // Thin divider
   pageH += 4;
   // Invoice title + number + date
@@ -222,7 +222,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     // ── Company header (centred) ──
     doc.fontSize(18).font(FONT).fillColor('#000');
     doc.text(COMPANY_NAME, LEFT, y, { align: 'center', width: CONTENT_W });
-    y += 16;
+    y += textH(COMPANY_NAME, CONTENT_W, 18);
 
     doc.fontSize(10).font(FONT).fillColor('#000');
     doc.text(COMPANY_TAGLINE, LEFT, y, { align: 'center', width: CONTENT_W });
