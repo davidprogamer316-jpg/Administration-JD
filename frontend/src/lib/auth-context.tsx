@@ -18,10 +18,13 @@ const AuthContext = createContext<AuthContextType | null>(null);
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 const AUTH_ME_TIMEOUT_MS = 10_000; // 10 seconds
 
-function fetchWithTimeout(url: string, ms: number): Promise<Response> {
+function fetchWithTimeout(url: string, ms: number, authToken: string): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ms);
-  return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
+  return fetch(url, {
+    signal: controller.signal,
+    headers: { Authorization: `Bearer ${authToken}` },
+  }).finally(() => clearTimeout(timer));
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -63,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (savedToken) {
       setToken(savedToken);
       const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-      fetchWithTimeout(`${API_BASE}/auth/me`, AUTH_ME_TIMEOUT_MS)
+      fetchWithTimeout(`${API_BASE}/auth/me`, AUTH_ME_TIMEOUT_MS, savedToken)
         .then((res) => {
           if (!res.ok) throw new Error('not ok');
           return res.json();
