@@ -11,6 +11,6 @@ router.get('/grouped', carJobController.listGrouped);
 router.get('/:id', carJobController.getById);
 router.post('/', carJobController.create);
 router.patch('/:id', carJobController.update);
-router.delete('/:id', carJobController.remove);
+router.patch('/:id/deactivate', carJobController.deactivate);
 
 export default router;

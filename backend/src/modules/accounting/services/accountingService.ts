@@ -5,6 +5,7 @@ import { env } from '../../../config/env.js';
 async function recalculate(period: IAccountingPeriod) {
   const jobs = await CarJob.find({
     date: { $gte: period.periodStartDate, $lte: period.periodEndDate },
+    active: { $ne: false },
   });
   period.income = Math.round(jobs.reduce((sum, j) => sum + j.payment, 0) * 100) / 100;
 

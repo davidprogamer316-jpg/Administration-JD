@@ -41,8 +41,12 @@ async function snapshotEmployeeShares() {
   }));
 }
 
-export async function list(filters?: { startDate?: string; endDate?: string; vin?: string }) {
+export async function list(filters?: { startDate?: string; endDate?: string; vin?: string; includeInactive?: boolean }) {
   const query: Record<string, unknown> = {};
+
+  if (!filters?.includeInactive) {
+    query.active = { $ne: false };
+  }
 
   if (filters?.startDate || filters?.endDate) {
     query.date = {};
@@ -206,7 +210,7 @@ export async function update(
   return job;
 }
 
-export async function remove(id: string) {
+export async function deactivate(id: string) {
   const job = await CarJob.findById(id);
   if (!job) {
     throw Object.assign(new Error('Trabajo no encontrado'), { status: 404 });
@@ -219,23 +223,17 @@ export async function remove(id: string) {
 
   if (period?.closed) {
     throw Object.assign(
-      new Error('No se pueden eliminar trabajos de un periodo cerrado'),
+      new Error('No se pueden desactivar trabajos de un periodo cerrado'),
       { status: 400 }
     );
   }
 
-  await CarJob.deleteOne({ _id: id });
+  job.active = false;
+  await job.save();
 
   if (period) {
-    const updated = await recalculateById(period._id.toString());
-    if (
-      updated.income === 0 &&
-      updated.expenseItems.length === 0 &&
-      updated.fixedExpenses.reduce((s: number, fe: { amount: number }) => s + fe.amount, 0) === 0
-    ) {
-      await AccountingPeriod.deleteOne({ _id: period._id });
-    }
+    await recalculateById(period._id.toString());
   }
 
-  return { message: 'Trabajo eliminado' };
+  return { message: 'Trabajo desactivado' };
 }

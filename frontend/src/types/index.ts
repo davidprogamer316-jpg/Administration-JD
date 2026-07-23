@@ -57,6 +57,7 @@ export interface CarJob {
   description: string;
   payment: number;
   closed: boolean;
+  active: boolean;
   paperTypes: string[];
   paymentMethod?: string;
   cardSurcharge: number;

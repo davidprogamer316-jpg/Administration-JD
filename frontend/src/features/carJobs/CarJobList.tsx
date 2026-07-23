@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, type FormEvent } from 'react';
 import { api } from '@/lib/api';
 import type { CarJob, QuincenaGroup } from '@/types';
-import { Plus, Pencil, Trash2, Search, FileDown, FileText, ChevronDown } from 'lucide-react';
+import { Plus, Pencil, XCircle, Search, FileDown, FileText, ChevronDown } from 'lucide-react';
 import { downloadFromApi } from '@/lib/download';
 import VinScanner from '@/components/VinScanner';
 import Modal from '@/components/Modal';
@@ -199,13 +199,13 @@ export default function CarJobList() {
     }
   }
 
-  async function handleDelete(job: CarJob) {
-    if (!confirm(`¿Eliminar trabajo del ${formatDate(job.date)}?`)) return;
+  async function handleDeactivate(job: CarJob) {
+    if (!confirm(`¿Desactivar trabajo del ${formatDate(job.date)}? No contará en la contabilidad.`)) return;
     try {
-      await api.delete(`/car-jobs/${job._id}`);
+      await api.patch(`/car-jobs/${job._id}/deactivate`);
       load();
     } catch {
-      setError('Error al eliminar');
+      setError('Error al desactivar');
     }
   }
 
@@ -543,12 +543,12 @@ export default function CarJobList() {
                                                 <Pencil size={16} />
                                               </button>
                                               <button
-                                                onClick={() => handleDelete(job)}
+                                                onClick={() => handleDeactivate(job)}
                                                 className="p-1.5 text-text-muted hover:text-danger transition-colors"
-                                                title="Eliminar"
+                                                title="Desactivar"
                                                 disabled={job.closed}
                                               >
-                                                <Trash2 size={16} />
+                                                <XCircle size={16} />
                                               </button>
                                             </div>
                                           </td>

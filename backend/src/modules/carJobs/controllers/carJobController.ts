@@ -68,13 +68,13 @@ export async function update(
   }
 }
 
-export async function remove(
+export async function deactivate(
   req: Request,
   res: Response,
   next: NextFunction
 ) {
   try {
-    const result = await carJobService.remove(req.params.id as string);
+    const result = await carJobService.deactivate(req.params.id as string);
     res.json(result);
   } catch (err: any) {
     if (err.status === 400 || err.status === 404) {

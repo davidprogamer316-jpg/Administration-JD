@@ -254,6 +254,7 @@ export async function exportCarJobsExcel(filters?: {
   endDate?: string;
 }): Promise<Buffer> {
   const query: Record<string, unknown> = {};
+  query.active = { $ne: false };
   if (filters?.startDate || filters?.endDate) {
     query.date = {};
     if (filters.startDate) {
