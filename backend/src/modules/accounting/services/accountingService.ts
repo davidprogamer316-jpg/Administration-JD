@@ -185,6 +185,18 @@ export async function closePeriod(periodId: string) {
     });
   }
 
+  const now = new Date();
+  const end = new Date(period.periodEndDate);
+  end.setHours(23, 59, 59, 999);
+  if (now <= end) {
+    throw Object.assign(
+      new Error(
+        `No se puede cerrar un periodo que no ha finalizado. Este periodo termina el ${end.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}.`
+      ),
+      { status: 400 }
+    );
+  }
+
   period.closed = true;
 
   await CarJob.updateMany(

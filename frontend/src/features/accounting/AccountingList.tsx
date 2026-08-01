@@ -109,8 +109,9 @@ export default function AccountingList() {
     try {
       await api.patch(`/accounting/${id}/close`);
       load();
-    } catch {
-      setError('Error al cerrar periodo');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      setError(msg || 'Error al cerrar periodo');
     }
   }
 
