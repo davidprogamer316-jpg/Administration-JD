@@ -15,7 +15,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+const IDLE_TIMEOUT_MS = 3 * 60 * 60 * 1000; // 3 hours
 const AUTH_ME_TIMEOUT_MS = 10_000; // 10 seconds
 
 function fetchWithTimeout(url: string, ms: number, authToken: string): Promise<Response> {
