@@ -96,10 +96,10 @@ export async function generatePdf(id: string): Promise<Buffer> {
     throw Object.assign(new Error('Cotización no encontrada'), { status: 404 });
   }
 
-  // ── Layout constants for half-letter landscape (8.5" x 5.5") like an invoice pad ──
-  const PAGE_W = 612;
-  const PAGE_H = 396;
-  const MARGIN = 24;
+  // ── Layout constants for half-letter portrait (5.5" x 8.5") like an invoice pad ──
+  const PAGE_W = 396;
+  const PAGE_H = 612;
+  const MARGIN = 28;
   const CONTENT_W = PAGE_W - MARGIN * 2;
   const LEFT = MARGIN;
   const RIGHT = PAGE_W - MARGIN;
@@ -108,7 +108,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
 
   // ── Pre-process logo (color) ──
   let logoBuffer: Buffer | null = null;
-  const LOGO_DISPLAY_W = 76;
+  const LOGO_DISPLAY_W = 150;
   let logoH = 0;
   if (fs.existsSync(LOGO_PATH)) {
     const imgBuf = fs.readFileSync(LOGO_PATH);
@@ -137,65 +137,73 @@ export async function generatePdf(id: string): Promise<Buffer> {
     doc.on('error', reject);
 
     // ── Invoice-pad border frame ──
-    doc.rect(8, 8, PAGE_W - 16, PAGE_H - 16).lineWidth(1.5).strokeColor(ACCENT).stroke();
+    doc.rect(10, 10, PAGE_W - 20, PAGE_H - 20).lineWidth(1.5).strokeColor(ACCENT).stroke();
 
-    let y = 20;
+    let y = 26;
 
-    // ── Header: logo (color, left) + company (middle) + doc info (right) ──
+    // ── Logo (color, centred) ──
     if (logoBuffer) {
-      doc.image(logoBuffer, LEFT, y, { width: LOGO_DISPLAY_W });
+      doc.image(logoBuffer, (PAGE_W - LOGO_DISPLAY_W) / 2, y, { width: LOGO_DISPLAY_W });
+      y += logoH;
     }
 
-    const HEADER_TEXT_X = LEFT + LOGO_DISPLAY_W + 14;
-    const HEADER_TEXT_W = CONTENT_W - LOGO_DISPLAY_W - 14 - 190;
+    y += 6;
 
-    doc.font(FONT_BOLD).fontSize(17).fillColor(FONT_COLOR);
-    doc.text(COMPANY_NAME, HEADER_TEXT_X, y + 4, { width: HEADER_TEXT_W });
-
-    doc.font(FONT).fontSize(9).fillColor('#555');
-    doc.text(COMPANY_TAGLINE, HEADER_TEXT_X, y + 27, { width: HEADER_TEXT_W });
+    // ── Company header (centred) ──
+    doc.font(FONT_BOLD).fontSize(16).fillColor(FONT_COLOR);
+    doc.text(COMPANY_NAME, LEFT, y, { align: 'center', width: CONTENT_W });
+    y += 20;
 
     doc.font(FONT).fontSize(9).fillColor('#555');
-    doc.text(`Tel: ${COMPANY_PHONE}`, HEADER_TEXT_X, y + 41, { width: HEADER_TEXT_W });
+    doc.text(COMPANY_TAGLINE, LEFT, y, { align: 'center', width: CONTENT_W });
+    y += 13;
 
-    doc.font(FONT_BOLD).fontSize(15).fillColor(FONT_COLOR);
-    doc.text('QUOTATION', RIGHT - 190, y, { width: 190, align: 'right' });
-    doc.text(quote.quoteNumber, RIGHT - 190, y + 18, { width: 190, align: 'right' });
-    doc.font(FONT).fontSize(9).fillColor('#333');
-    doc.text(`Date: ${formatDate(quote.date)}`, RIGHT - 190, y + 40, { width: 190, align: 'right' });
-
-    y += Math.max(logoH, 56) + 10;
+    doc.font(FONT).fontSize(9).fillColor('#555');
+    doc.text(`Tel: ${COMPANY_PHONE}`, LEFT, y, { align: 'center', width: CONTENT_W });
+    y += 14;
 
     // ── Double divider ──
     doc.moveTo(LEFT, y).lineTo(RIGHT, y).lineWidth(1).strokeColor(ACCENT).stroke();
     y += 2;
     doc.moveTo(LEFT, y).lineTo(RIGHT, y).lineWidth(0.5).strokeColor(ACCENT).stroke();
-    y += 8;
+    y += 10;
+
+    // ── Quote title + number + date ──
+    doc.font(FONT_BOLD).fontSize(15).fillColor(FONT_COLOR);
+    doc.text('QUOTATION', LEFT, y, { align: 'center', width: CONTENT_W });
+    y += 19;
+
+    doc.font(FONT_BOLD).fontSize(14).fillColor(FONT_COLOR);
+    doc.text(quote.quoteNumber, LEFT, y, { align: 'center', width: CONTENT_W });
+    y += 18;
+
+    doc.font(FONT).fontSize(10).fillColor('#333');
+    doc.text(`Date: ${formatDate(quote.date)}`, LEFT, y, { align: 'center', width: CONTENT_W });
+    y += 12;
+
+    // ── Divider ──
+    doc.moveTo(LEFT, y).lineTo(RIGHT, y).lineWidth(0.5).strokeColor(ACCENT).stroke();
+    y += 10;
 
     // ── Customer ──
-    doc.font(FONT_BOLD).fontSize(9).fillColor('#777');
+    doc.font(FONT_BOLD).fontSize(10).fillColor(FONT_COLOR);
     doc.text('CUSTOMER', LEFT, y);
-    y += 12;
-    doc.font(FONT_BOLD).fontSize(13).fillColor(FONT_COLOR);
+    y += 13;
+
+    doc.font(FONT_BOLD).fontSize(12).fillColor(FONT_COLOR);
     doc.text(quote.clientName, LEFT, y, { width: CONTENT_W });
-    y += doc.heightOfString(quote.clientName, { width: CONTENT_W }) + 4;
+    y += doc.heightOfString(quote.clientName, { width: CONTENT_W }) + 6;
 
     // ── Table header ──
     const SQFT_W = 70;
     const NO_W = 26;
-    const MEASURE_W = 190;
-    const NOTES_W = CONTENT_W - NO_W - MEASURE_W - SQFT_W;
     const MEASURE_LEFT = LEFT + NO_W;
-    const NOTES_LEFT = MEASURE_LEFT + MEASURE_W;
-    const SQFT_LEFT = RIGHT - SQFT_W;
+    const MEASURE_W = CONTENT_W - NO_W - SQFT_W;
 
-    doc.moveTo(LEFT, y).lineTo(RIGHT, y).lineWidth(0.5).strokeColor(ACCENT).stroke();
-    y += 4;
     doc.font(FONT_BOLD).fontSize(10).fillColor(FONT_COLOR);
     doc.text('No.', LEFT, y, { width: NO_W });
     doc.text('MEASUREMENTS', MEASURE_LEFT, y, { width: MEASURE_W, align: 'center' });
-    doc.text('NOTES', NOTES_LEFT, y, { width: NOTES_W });
-    doc.text('SQ FT', SQFT_LEFT, y, { width: SQFT_W, align: 'right' });
+    doc.text('SQ FT', RIGHT - SQFT_W, y, { width: SQFT_W, align: 'right' });
     y += 15;
     doc.moveTo(LEFT, y).lineTo(RIGHT, y).lineWidth(1).strokeColor(ACCENT).stroke();
     y += 4;
@@ -203,19 +211,20 @@ export async function generatePdf(id: string): Promise<Buffer> {
     // ── Items ──
     quote.items.forEach((item, i) => {
       const measureText = `${item.ancho}" x ${item.alto}" x ${item.unidades} u`;
-      const noteText = item.nota || '';
-      const rowH = Math.max(
-        doc.heightOfString(measureText, { width: MEASURE_W }),
-        noteText ? doc.heightOfString(noteText, { width: NOTES_W }) : 0,
-        13
-      );
+      const measureH = doc.heightOfString(measureText, { width: MEASURE_W });
 
       doc.font(FONT).fontSize(10).fillColor(FONT_COLOR);
       doc.text(String(i + 1), LEFT, y, { width: NO_W });
       doc.text(measureText, MEASURE_LEFT, y, { width: MEASURE_W, align: 'center' });
-      doc.text(noteText, NOTES_LEFT, y, { width: NOTES_W });
-      doc.text(`${item.sqFt}`, SQFT_LEFT, y, { width: SQFT_W, align: 'right' });
-      y += rowH + 3;
+      doc.text(`${item.sqFt}`, RIGHT - SQFT_W, y, { width: SQFT_W, align: 'right' });
+      y += Math.max(measureH, 13) + 2;
+
+      if (item.nota) {
+        doc.font(FONT).fontSize(8).fillColor('#777');
+        const noteText = `Note: ${item.nota}`;
+        doc.text(noteText, LEFT + 10, y, { width: CONTENT_W - 10 });
+        y += doc.heightOfString(noteText, { width: CONTENT_W - 10 }) + 2;
+      }
     });
 
     // ── Divider ──
@@ -223,12 +232,9 @@ export async function generatePdf(id: string): Promise<Buffer> {
     doc.moveTo(LEFT, y).lineTo(RIGHT, y).lineWidth(1).strokeColor(ACCENT).stroke();
     y += 8;
 
-    // ── Summary ──
-    const wasteSqFt = round2(quote.sqFtWithWaste - quote.totalSqFt);
+    // ── Summary (waste is kept for the calculation but not shown on the PDF) ──
     const summaryRows = [
       { label: 'Total sq ft', value: `${quote.totalSqFt}` },
-      { label: `Waste (${Math.round(quote.waste * 100)}%)`, value: `${wasteSqFt}` },
-      { label: 'Sq ft with waste', value: `${quote.sqFtWithWaste}` },
       { label: 'Price / sq ft', value: formatMoney(quote.pricePerSqFt) },
     ];
 
@@ -250,16 +256,16 @@ export async function generatePdf(id: string): Promise<Buffer> {
 
     // ── Divider ──
     doc.moveTo(LEFT, y).lineTo(RIGHT, y).lineWidth(0.5).strokeColor(ACCENT).stroke();
-    y += 6;
+    y += 10;
 
     // ── Footer ──
-    doc.font(FONT).fontSize(8).fillColor('#555');
+    doc.font(FONT).fontSize(9).fillColor('#555');
     const disclaimer =
       'This is a quotation. Final pricing is subject to verification at time of installation.';
     doc.text(disclaimer, LEFT, y, { width: CONTENT_W, align: 'center' });
-    y += doc.heightOfString(disclaimer, { width: CONTENT_W }) + 2;
+    y += doc.heightOfString(disclaimer, { width: CONTENT_W }) + 4;
 
-    doc.font(FONT).fontSize(8).fillColor('#555');
+    doc.font(FONT).fontSize(9).fillColor('#555');
     const footerText = `Generated on ${formatDate(new Date())} by ${COMPANY_NAME}.`;
     doc.text(footerText, LEFT, y, { width: CONTENT_W, align: 'center' });
 
