@@ -492,8 +492,8 @@ export default function QuoteList() {
                   className="py-1 border-b border-border last:border-0"
                 >
                   <p className="text-text-body">
-                    {item.ancho}&quot; x {item.alto}&quot; x {item.unidades} u ={' '}
-                    <span className="font-medium">{item.sqFt.toFixed(2)} pies²</span>
+                    {item.ancho} inches x {item.alto} inches x {item.unidades} units ={' '}
+                    <span className="font-medium">{item.sqFt.toFixed(2)} square feet</span>
                   </p>
                   {item.nota && (
                     <p className="text-text-muted text-xs mt-0.5">
@@ -503,25 +503,25 @@ export default function QuoteList() {
                 </div>
               ))}
             </div>
-            <div className="rounded-lg border border-border bg-bg-page p-3 space-y-1">
+              <div className="rounded-lg border border-border bg-bg-page p-3 space-y-1">
               <div className="flex items-center justify-between">
-                <span className="text-text-muted">Total pies²</span>
+                <span className="text-text-muted">Total square feet</span>
                 <span className="text-text-body tabular-nums">{detailQuote.totalSqFt.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-text-muted">
-                  Desperdicio ({Math.round(detailQuote.waste * 100)}%)
+                  Waste ({Math.round(detailQuote.waste * 100)}%)
                 </span>
                 <span className="text-text-body tabular-nums">
                   {(detailQuote.sqFtWithWaste - detailQuote.totalSqFt).toFixed(2)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-text-muted">Pies² con desperdicio</span>
+                <span className="text-text-muted">Square feet with waste</span>
                 <span className="text-text-body tabular-nums">{detailQuote.sqFtWithWaste.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-text-muted">Precio / pie²</span>
+                <span className="text-text-muted">Price per square foot</span>
                 <span className="text-text-body tabular-nums">{formatMoney(detailQuote.pricePerSqFt)}</span>
               </div>
             </div>

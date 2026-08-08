@@ -195,7 +195,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     y += doc.heightOfString(quote.clientName, { width: CONTENT_W }) + 6;
 
     // ── Table header ──
-    const SQFT_W = 70;
+    const SQFT_W = 82;
     const NO_W = 26;
     const MEASURE_LEFT = LEFT + NO_W;
     const MEASURE_W = CONTENT_W - NO_W - SQFT_W;
@@ -203,14 +203,14 @@ export async function generatePdf(id: string): Promise<Buffer> {
     doc.font(FONT_BOLD).fontSize(10).fillColor(FONT_COLOR);
     doc.text('No.', LEFT, y, { width: NO_W });
     doc.text('MEASUREMENTS', MEASURE_LEFT, y, { width: MEASURE_W, align: 'center' });
-    doc.text('SQ FT', RIGHT - SQFT_W, y, { width: SQFT_W, align: 'right' });
+    doc.text('SQUARE FEET', RIGHT - SQFT_W, y, { width: SQFT_W, align: 'right' });
     y += 15;
     doc.moveTo(LEFT, y).lineTo(RIGHT, y).lineWidth(1).strokeColor(ACCENT).stroke();
     y += 4;
 
     // ── Items ──
     quote.items.forEach((item, i) => {
-      const measureText = `${item.ancho}" x ${item.alto}" x ${item.unidades} u`;
+      const measureText = `${item.ancho} inches x ${item.alto} inches x ${item.unidades} units`;
       const measureH = doc.heightOfString(measureText, { width: MEASURE_W });
 
       doc.font(FONT).fontSize(10).fillColor(FONT_COLOR);
@@ -234,8 +234,8 @@ export async function generatePdf(id: string): Promise<Buffer> {
 
     // ── Summary (waste is kept for the calculation but not shown on the PDF) ──
     const summaryRows = [
-      { label: 'Total sq ft', value: `${quote.totalSqFt}` },
-      { label: 'Price / sq ft', value: formatMoney(quote.pricePerSqFt) },
+      { label: 'Total square feet', value: `${quote.totalSqFt}` },
+      { label: 'Price per square foot', value: formatMoney(quote.pricePerSqFt) },
     ];
 
     doc.font(FONT).fontSize(10).fillColor('#333');
