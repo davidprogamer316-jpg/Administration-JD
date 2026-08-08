@@ -9,6 +9,7 @@ import {
   Calculator,
   FileText,
   Settings,
+  Ruler,
   LogOut,
   X,
   Menu,
@@ -22,6 +23,7 @@ const navItems = [
   { href: '/employees', label: 'Empleados', icon: Users },
   { href: '/car-jobs', label: 'Trabajos', icon: Car },
   { href: '/invoices', label: 'Facturación', icon: FileText },
+  { href: '/quotes', label: 'Cotizaciones', icon: Ruler },
   { href: '/settings', label: 'Configuración', icon: Settings },
 ];
 

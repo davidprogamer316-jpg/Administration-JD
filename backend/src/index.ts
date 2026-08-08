@@ -8,6 +8,7 @@ import carJobRoutes from './modules/carJobs/routes/carJobRoutes.js';
 import accountingRoutes from './modules/accounting/routes/accountingRoutes.js';
 import fixedExpenseRoutes from './modules/accounting/routes/fixedExpenseRoutes.js';
 import invoiceRoutes from './modules/invoices/routes/invoiceRoutes.js';
+import quoteRoutes from './modules/quotes/routes/index.js';
 import { errorHandler } from './shared/middleware/errorHandler.js';
 
 const app = express();
@@ -38,6 +39,7 @@ app.use('/api/car-jobs', carJobRoutes);
 app.use('/api/accounting', accountingRoutes);
 app.use('/api/fixed-expenses', fixedExpenseRoutes);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/quotes', quoteRoutes);
 
 app.use(errorHandler);
 

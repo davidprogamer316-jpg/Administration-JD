@@ -99,3 +99,24 @@ export interface Invoice {
   total: number;
   notes: string;
 }
+
+export interface QuoteItem {
+  ancho: number;
+  alto: number;
+  unidades: number;
+  nota?: string;
+  sqFt: number;
+}
+
+export interface Quote {
+  _id: string;
+  quoteNumber: string;
+  clientName: string;
+  date: string;
+  items: QuoteItem[];
+  waste: number;
+  totalSqFt: number;
+  sqFtWithWaste: number;
+  pricePerSqFt: number;
+  total: number;
+}
