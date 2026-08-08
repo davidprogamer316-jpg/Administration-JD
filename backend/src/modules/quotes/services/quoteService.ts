@@ -245,20 +245,47 @@ export async function generatePdf(id: string): Promise<Buffer> {
     const MEASURE_LEFT = LEFT + NO_W;
     const MEASURE_W = CONTENT_W - NO_W - UNITS_W - SQFT_W;
     const UNITS_LEFT = MEASURE_LEFT + MEASURE_W;
+    const BOTTOM_PAD = 40;
+    const TABLE_HEADER_H = 19;
 
-    doc.font(FONT_BOLD).fontSize(10).fillColor(FONT_COLOR);
-    doc.text('No.', LEFT, y, { width: NO_W });
-    doc.text('MEASUREMENTS', MEASURE_LEFT, y, { width: MEASURE_W });
-    doc.text('UNITS', UNITS_LEFT, y, { width: UNITS_W, align: 'center' });
-    doc.text('SQUARE FEET', RIGHT - SQFT_W, y, { width: SQFT_W, align: 'right' });
-    y += 15;
-    doc.moveTo(LEFT, y).lineTo(RIGHT, y).lineWidth(1).strokeColor(ACCENT).stroke();
-    y += 4;
+    function drawFrame() {
+      doc.rect(10, 10, PAGE_W - 20, PAGE_H - 20).lineWidth(1.5).strokeColor(ACCENT).stroke();
+    }
+
+    function ensure(h: number) {
+      if (y + h > PAGE_H - BOTTOM_PAD) {
+        doc.addPage();
+        drawFrame();
+        y = 26;
+        return true;
+      }
+      return false;
+    }
+
+    function drawTableHeader() {
+      doc.font(FONT_BOLD).fontSize(10).fillColor(FONT_COLOR);
+      doc.text('No.', LEFT, y, { width: NO_W });
+      doc.text('MEASUREMENTS', MEASURE_LEFT, y, { width: MEASURE_W });
+      doc.text('UNITS', UNITS_LEFT, y, { width: UNITS_W, align: 'center' });
+      doc.text('SQUARE FEET', RIGHT - SQFT_W, y, { width: SQFT_W, align: 'right' });
+      y += 15;
+      doc.moveTo(LEFT, y).lineTo(RIGHT, y).lineWidth(1).strokeColor(ACCENT).stroke();
+      y += 4;
+    }
+
+    drawTableHeader();
 
     // ── Items ──
     quote.items.forEach((item, i) => {
       const measureText = `${item.ancho} inches x ${item.alto} inches`;
       const measureH = doc.heightOfString(measureText, { width: MEASURE_W });
+      const noteText = item.nota ? `Note: ${item.nota}` : '';
+      const noteH = noteText ? doc.heightOfString(noteText, { width: CONTENT_W - 10 }) + 2 : 0;
+      const rowH = Math.max(measureH, 13) + 2 + noteH;
+
+      if (ensure(TABLE_HEADER_H + rowH)) {
+        drawTableHeader();
+      }
 
       doc.font(FONT).fontSize(10).fillColor(FONT_COLOR);
       doc.text(String(i + 1), LEFT, y, { width: NO_W });
@@ -269,11 +296,13 @@ export async function generatePdf(id: string): Promise<Buffer> {
 
       if (item.nota) {
         doc.font(FONT).fontSize(8).fillColor('#777');
-        const noteText = `Note: ${item.nota}`;
         doc.text(noteText, LEFT + 10, y, { width: CONTENT_W - 10 });
         y += doc.heightOfString(noteText, { width: CONTENT_W - 10 }) + 2;
       }
     });
+
+    // ── Closing block (divider + summary + total + footer) stays together on one page ──
+    ensure(150);
 
     // ── Divider ──
     y += 2;
