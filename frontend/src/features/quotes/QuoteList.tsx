@@ -4,7 +4,7 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { api } from '@/lib/api';
 import { downloadFromApi } from '@/lib/download';
 import type { Quote } from '@/types';
-import { Plus, FileDown, Trash2, Eye, X } from 'lucide-react';
+import { Plus, FileDown, Trash2, Eye, X, Pencil } from 'lucide-react';
 import Modal from '@/components/Modal';
 
 function formatDate(dateStr: string) {
@@ -43,6 +43,7 @@ export default function QuoteList() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [detailQuote, setDetailQuote] = useState<Quote | null>(null);
 
@@ -73,8 +74,26 @@ export default function QuoteList() {
     setItems([{ ancho: '', alto: '', unidades: '1', nota: '' }]);
     setWaste('10');
     setPricePerSqFt('');
+    setEditingId(null);
     setShowForm(false);
     setError('');
+  }
+
+  function startEdit(quote: Quote) {
+    setClientName(quote.clientName);
+    setItems(
+      quote.items.map((it) => ({
+        ancho: String(it.ancho),
+        alto: String(it.alto),
+        unidades: String(it.unidades),
+        nota: it.nota || '',
+      }))
+    );
+    setWaste(String(Math.round(quote.waste * 100)));
+    setPricePerSqFt(String(quote.pricePerSqFt));
+    setEditingId(quote._id);
+    setError('');
+    setShowForm(true);
   }
 
   function updateItem(index: number, field: keyof DraftItem, value: string) {
@@ -111,7 +130,7 @@ export default function QuoteList() {
     }
 
     try {
-      await api.post('/quotes', {
+      const payload = {
         clientName,
         items: items.map((it) => ({
           ancho: parseFloat(it.ancho),
@@ -121,11 +140,16 @@ export default function QuoteList() {
         })),
         waste: isNaN(wasteNum) ? 0.1 : wasteNum,
         pricePerSqFt: priceNum,
-      });
+      };
+      if (editingId) {
+        await api.put(`/quotes/${editingId}`, payload);
+      } else {
+        await api.post('/quotes', payload);
+      }
       resetForm();
       load();
     } catch (err: any) {
-      setError(err.message || 'Error al crear cotización');
+      setError(err.message || 'Error al guardar cotización');
     }
   }
 
@@ -177,7 +201,7 @@ export default function QuoteList() {
           className="rounded-xl border border-border p-6 shadow-sm bg-surface mb-6 max-w-2xl"
         >
           <h3 className="text-base font-heading font-semibold text-text-body mb-4">
-            Nueva cotización
+            {editingId ? 'Editar cotización' : 'Nueva cotización'}
           </h3>
 
           <div className="space-y-4">
@@ -351,7 +375,7 @@ export default function QuoteList() {
               type="submit"
               className="rounded-lg bg-accent text-white px-5 py-2.5 text-sm font-medium hover:bg-accent/90 transition-colors"
             >
-              Crear cotización
+              {editingId ? 'Guardar cambios' : 'Crear cotización'}
             </button>
             <button
               type="button"
@@ -436,16 +460,23 @@ export default function QuoteList() {
                         <Eye size={16} />
                       </button>
                       <button
-                        onClick={() =>
+                        onClick={() => {
                           downloadFromApi(
                             `/quotes/${q._id}/pdf?download=true`,
                             `cotizacion-${q.quoteNumber}.pdf`
                           )
-                        }
+                        }}
                         className="p-1.5 text-text-muted hover:text-accent transition-colors"
                         title="Descargar PDF"
                       >
                         <FileDown size={16} />
+                      </button>
+                      <button
+                        onClick={() => startEdit(q)}
+                        className="p-1.5 text-text-muted hover:text-accent transition-colors"
+                        title="Editar"
+                      >
+                        <Pencil size={16} />
                       </button>
                       <button
                         onClick={() => handleDelete(q)}

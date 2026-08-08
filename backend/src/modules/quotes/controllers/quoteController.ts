@@ -44,6 +44,15 @@ router.post('/', async (req, res, next) => {
   }
 });
 
+router.put('/:id', async (req, res, next) => {
+  try {
+    const quote = await quoteService.update(req.params.id, req.body);
+    res.json(quote);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.delete('/:id', async (req, res, next) => {
   try {
     const result = await quoteService.remove(req.params.id);

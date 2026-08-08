@@ -90,6 +90,50 @@ export async function remove(id: string) {
   return { message: 'Cotización eliminada' };
 }
 
+export async function update(
+  id: string,
+  data: {
+    clientName: string;
+    items: Array<{ ancho: number; alto: number; unidades: number; nota?: string }>;
+    waste?: number;
+    pricePerSqFt: number;
+  }
+) {
+  const quote = await Quote.findById(id);
+  if (!quote) {
+    throw Object.assign(new Error('Cotización no encontrada'), { status: 404 });
+  }
+
+  const waste = data.waste !== undefined ? data.waste : 0.1;
+
+  const items = data.items.map((item) => {
+    const sqFt = round2((item.ancho * item.alto * item.unidades) / 144);
+    return {
+      ancho: item.ancho,
+      alto: item.alto,
+      unidades: item.unidades,
+      nota: item.nota || '',
+      sqFt,
+    };
+  });
+
+  const totalSqFt = round2(items.reduce((sum, it) => sum + it.sqFt, 0));
+  const sqFtWithWaste = round2(totalSqFt * (1 + waste));
+  const total = round2(data.pricePerSqFt * sqFtWithWaste);
+
+  quote.clientName = data.clientName;
+  quote.items = items;
+  quote.waste = waste;
+  quote.totalSqFt = totalSqFt;
+  quote.sqFtWithWaste = sqFtWithWaste;
+  quote.pricePerSqFt = data.pricePerSqFt;
+  quote.total = total;
+
+  await quote.save();
+
+  return quote;
+}
+
 export async function generatePdf(id: string): Promise<Buffer> {
   const quote = await Quote.findById(id);
   if (!quote) {
@@ -204,7 +248,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
 
     doc.font(FONT_BOLD).fontSize(10).fillColor(FONT_COLOR);
     doc.text('No.', LEFT, y, { width: NO_W });
-    doc.text('MEASUREMENTS', MEASURE_LEFT, y, { width: MEASURE_W, align: 'center' });
+    doc.text('MEASUREMENTS', MEASURE_LEFT, y, { width: MEASURE_W });
     doc.text('UNITS', UNITS_LEFT, y, { width: UNITS_W, align: 'center' });
     doc.text('SQUARE FEET', RIGHT - SQFT_W, y, { width: SQFT_W, align: 'right' });
     y += 15;
@@ -218,7 +262,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
 
       doc.font(FONT).fontSize(10).fillColor(FONT_COLOR);
       doc.text(String(i + 1), LEFT, y, { width: NO_W });
-      doc.text(measureText, MEASURE_LEFT, y, { width: MEASURE_W, align: 'center' });
+      doc.text(measureText, MEASURE_LEFT, y, { width: MEASURE_W });
       doc.text(`${item.unidades}`, UNITS_LEFT, y, { width: UNITS_W, align: 'center' });
       doc.text(`${item.sqFt}`, RIGHT - SQFT_W, y, { width: SQFT_W, align: 'right' });
       y += Math.max(measureH, 13) + 2;
