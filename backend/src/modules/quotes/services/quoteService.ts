@@ -15,7 +15,6 @@ const COMPANY_PHONE = '786 793 4440';
 const COMPANY_URL = 'https://tinting-film.com';
 
 const LOGO_PATH = path.join(__dirname, '../../../../assets/logo.PNG');
-const QR_SIZE = 72;
 
 function formatMoney(n: number): string {
   return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
@@ -99,68 +98,28 @@ export async function generatePdf(id: string): Promise<Buffer> {
     throw Object.assign(new Error('Cotización no encontrada'), { status: 404 });
   }
 
-  // ── Layout constants for 80 mm thermal paper (same as invoice) ──
-  const PAGE_W = 204;
-  const MARGIN = 4;
+  // ── Layout constants for half-letter portrait (5.5" x 8.5") like an invoice pad ──
+  const PAGE_W = 396;
+  const PAGE_H = 612;
+  const MARGIN = 28;
   const CONTENT_W = PAGE_W - MARGIN * 2;
   const LEFT = MARGIN;
   const RIGHT = PAGE_W - MARGIN;
+  const FONT_COLOR = '#1a1a2e';
+  const ACCENT = '#1a1a2e';
 
-  function textH(text: string, w: number, fs: number): number {
-    const avgCharW = fs * 0.56;
-    const cpl = Math.max(1, Math.floor(w / avgCharW));
-    const lines = Math.max(1, Math.ceil(text.length / cpl));
-    return lines * fs * 1.35;
-  }
-
-  // ── Pre-process logo ──
+  // ── Pre-process logo (color) ──
   let logoBuffer: Buffer | null = null;
-  const LOGO_DISPLAY_W = 160;
+  const LOGO_DISPLAY_W = 150;
   let logoH = 0;
   if (fs.existsSync(LOGO_PATH)) {
     const imgBuf = fs.readFileSync(LOGO_PATH);
     const meta = await sharp(imgBuf).metadata();
     logoH = Math.round(LOGO_DISPLAY_W * meta.height! / meta.width!);
-    logoBuffer = await sharp(imgBuf).grayscale().toBuffer();
+    logoBuffer = imgBuf;
   }
 
-  // ── Estimate page height ──
-  const summaryLines = [
-    'Total sq ft',
-    `Waste (${Math.round(quote.waste * 100)}%)`,
-    'Sq ft with waste',
-    'Price / sq ft',
-    'TOTAL',
-  ];
-  let pageH = MARGIN;
-  pageH += 5;
-  pageH += logoH || 0;
-  pageH += 5;
-  pageH += textH(COMPANY_NAME, CONTENT_W, 18) + textH(COMPANY_TAGLINE, CONTENT_W, 10) + textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 10);
-  pageH += 4;
-  pageH += 14 + 4 + 14 + 4 + textH(`Date: ${formatDate(quote.date)}`, CONTENT_W, 10);
-  pageH += 12;
-  pageH += 12 + 2 + textH(quote.clientName, CONTENT_W, 11) + 2;
-  pageH += 12;
-  pageH += 16;
-  for (const item of quote.items) {
-    let itemH = textH(`${item.ancho}" x ${item.alto}" x ${item.unidades} = ${item.sqFt} sq ft`, CONTENT_W, 11) + 4;
-    if (item.nota) {
-      itemH += textH(`Note: ${item.nota}`, CONTENT_W, 9) + 2;
-    }
-    pageH += itemH;
-  }
-  pageH += 4 + summaryLines.length * 16 + 8;
-  pageH += 12;
-  pageH += textH(
-    'This is a quotation. Final pricing is subject to verification at time of installation.',
-    CONTENT_W, 10
-  ) + 4;
-  pageH += textH(`Generated on ${formatDate(new Date())} by ${COMPANY_NAME}.`, CONTENT_W, 10);
-  pageH += 12 + QR_SIZE + 8;
-  pageH = Math.ceil(pageH * 1.4) + MARGIN;
-
-  const doc = new PDFDocument({ size: [PAGE_W, pageH], margin: MARGIN });
+  const doc = new PDFDocument({ size: [PAGE_W, PAGE_H], margin: MARGIN });
   const chunks: Buffer[] = [];
   doc.on('data', (chunk) => chunks.push(chunk));
 
@@ -173,94 +132,110 @@ export async function generatePdf(id: string): Promise<Buffer> {
     doc.registerFont('CourierPrime-Bold', CP_BOLD);
   }
   const FONT = fs.existsSync(CP_REG) ? 'CourierPrime' : 'Courier';
+  const FONT_BOLD = fs.existsSync(CP_REG) ? 'CourierPrime-Bold' : 'Courier';
 
   return new Promise((resolve, reject) => {
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    let y = 5;
+    // ── Invoice-pad border frame ──
+    doc.rect(10, 10, PAGE_W - 20, PAGE_H - 20).lineWidth(1.5).strokeColor(ACCENT).stroke();
 
-    // ── Logo (grayscale) ──
+    let y = 26;
+
+    // ── Logo (color, centred) ──
     if (logoBuffer) {
       doc.image(logoBuffer, (PAGE_W - LOGO_DISPLAY_W) / 2, y, { width: LOGO_DISPLAY_W });
       y += logoH;
     }
 
-    y += 5;
+    y += 6;
 
     // ── Company header (centred) ──
-    doc.fontSize(18).font(FONT).fillColor('#000');
+    doc.font(FONT_BOLD).fontSize(16).fillColor(FONT_COLOR);
     doc.text(COMPANY_NAME, LEFT, y, { align: 'center', width: CONTENT_W });
-    y += textH(COMPANY_NAME, CONTENT_W, 18);
+    y += 20;
 
-    doc.fontSize(10).font(FONT).fillColor('#000');
+    doc.font(FONT).fontSize(9).fillColor('#555');
     doc.text(COMPANY_TAGLINE, LEFT, y, { align: 'center', width: CONTENT_W });
-    y += textH(COMPANY_TAGLINE, CONTENT_W, 10);
+    y += 13;
 
-    doc.fontSize(10).font(FONT).fillColor('#000');
+    doc.font(FONT).fontSize(9).fillColor('#555');
     doc.text(`Tel: ${COMPANY_PHONE}`, LEFT, y, { align: 'center', width: CONTENT_W });
-    y += textH(`Tel: ${COMPANY_PHONE}`, CONTENT_W, 10);
-
-    // ── Thin divider ──
-    y += 1;
-    doc.moveTo(LEFT, y).lineTo(RIGHT, y).strokeColor('#000').lineWidth(0.5).stroke();
-    y += 3;
-
-    // ── Quote title + number + date ──
-    doc.fontSize(16).font(FONT).fillColor('#000');
-    doc.text('QUOTATION', LEFT, y, { align: 'center', width: CONTENT_W });
     y += 14;
 
-    doc.fontSize(16).font(FONT).fillColor('#000');
-    doc.text(quote.quoteNumber, LEFT, y, { align: 'center', width: CONTENT_W });
-    y += 14;
-
-    doc.fontSize(10).font(FONT).fillColor('#000');
-    doc.text(`Date: ${formatDate(quote.date)}`, LEFT, y, { align: 'center', width: CONTENT_W });
+    // ── Double divider ──
+    doc.moveTo(LEFT, y).lineTo(RIGHT, y).lineWidth(1).strokeColor(ACCENT).stroke();
+    y += 2;
+    doc.moveTo(LEFT, y).lineTo(RIGHT, y).lineWidth(0.5).strokeColor(ACCENT).stroke();
     y += 10;
 
-    // ── Divider ──
-    doc.moveTo(LEFT, y).lineTo(RIGHT, y).strokeColor('#000').lineWidth(0.5).stroke();
-    y += 8;
+    // ── Quote title + number + date ──
+    doc.font(FONT_BOLD).fontSize(15).fillColor(FONT_COLOR);
+    doc.text('QUOTATION', LEFT, y, { align: 'center', width: CONTENT_W });
+    y += 19;
 
-    // ── Client ──
-    doc.fontSize(11).font(FONT).fillColor('#000');
-    doc.text('CUSTOMER', LEFT, y);
+    doc.font(FONT_BOLD).fontSize(14).fillColor(FONT_COLOR);
+    doc.text(quote.quoteNumber, LEFT, y, { align: 'center', width: CONTENT_W });
+    y += 18;
+
+    doc.font(FONT).fontSize(10).fillColor('#333');
+    doc.text(`Date: ${formatDate(quote.date)}`, LEFT, y, { align: 'center', width: CONTENT_W });
     y += 12;
 
-    doc.fontSize(11).font(FONT).fillColor('#000');
-    doc.text(quote.clientName, LEFT, y);
-    y += textH(quote.clientName, CONTENT_W, 11) + 2;
-
     // ── Divider ──
-    doc.moveTo(LEFT, y).lineTo(RIGHT, y).strokeColor('#000').lineWidth(0.5).stroke();
-    y += 8;
+    doc.moveTo(LEFT, y).lineTo(RIGHT, y).lineWidth(0.5).strokeColor(ACCENT).stroke();
+    y += 10;
+
+    // ── Customer ──
+    doc.font(FONT_BOLD).fontSize(10).fillColor(FONT_COLOR);
+    doc.text('CUSTOMER', LEFT, y);
+    y += 13;
+
+    doc.font(FONT_BOLD).fontSize(12).fillColor(FONT_COLOR);
+    doc.text(quote.clientName, LEFT, y, { width: CONTENT_W });
+    y += doc.heightOfString(quote.clientName, { width: CONTENT_W }) + 6;
 
     // ── Table header ──
-    doc.fontSize(11).font(FONT).fillColor('#000');
-    doc.text('MEASUREMENTS', LEFT, y, { width: CONTENT_W });
-    y += 14;
+    const SQFT_W = 70;
+    const NO_W = 26;
+    const MEASURE_LEFT = LEFT + NO_W;
+    const MEASURE_W = CONTENT_W - NO_W - SQFT_W;
+
+    doc.font(FONT_BOLD).fontSize(10).fillColor(FONT_COLOR);
+    doc.text('No.', LEFT, y, { width: NO_W });
+    doc.text('MEASUREMENTS', MEASURE_LEFT, y, { width: MEASURE_W, align: 'center' });
+    doc.text('SQ FT', RIGHT - SQFT_W, y, { width: SQFT_W, align: 'right' });
+    y += 15;
+    doc.moveTo(LEFT, y).lineTo(RIGHT, y).lineWidth(1).strokeColor(ACCENT).stroke();
+    y += 4;
 
     // ── Items ──
-    for (const item of quote.items) {
-      const measureText = `${item.ancho}" x ${item.alto}" x ${item.unidades} u = ${item.sqFt} sq ft`;
-      doc.fontSize(11).font(FONT).fillColor('#000');
-      doc.text(measureText, LEFT, y, { width: CONTENT_W });
-      y += doc.heightOfString(measureText, { width: CONTENT_W }) + 2;
+    quote.items.forEach((item, i) => {
+      const measureText = `${item.ancho}" x ${item.alto}" x ${item.unidades} u`;
+      const measureH = doc.heightOfString(measureText, { width: MEASURE_W });
+      const sqftText = `${item.sqFt}`;
+
+      doc.font(FONT).fontSize(10).fillColor(FONT_COLOR);
+      doc.text(String(i + 1), LEFT, y, { width: NO_W });
+      doc.text(measureText, MEASURE_LEFT, y, { width: MEASURE_W, align: 'center' });
+      doc.text(sqftText, RIGHT - SQFT_W, y, { width: SQFT_W, align: 'right' });
+      y += Math.max(measureH, 13) + 2;
 
       if (item.nota) {
-        doc.fontSize(9).font(FONT).fillColor('#000');
+        doc.font(FONT).fontSize(8).fillColor('#777');
         const noteText = `Note: ${item.nota}`;
-        doc.text(noteText, LEFT, y, { width: CONTENT_W });
-        y += doc.heightOfString(noteText, { width: CONTENT_W }) + 2;
+        doc.text(noteText, LEFT + 10, y, { width: CONTENT_W - 10 });
+        y += doc.heightOfString(noteText, { width: CONTENT_W - 10 }) + 2;
       }
-    }
+    });
 
-    // ── Summary / total ──
+    // ── Divider ──
     y += 2;
-    doc.moveTo(LEFT, y).lineTo(RIGHT, y).strokeColor('#000').lineWidth(1).stroke();
+    doc.moveTo(LEFT, y).lineTo(RIGHT, y).lineWidth(1).strokeColor(ACCENT).stroke();
     y += 8;
 
+    // ── Summary ──
     const summaryRows = [
       { label: 'Total sq ft', value: `${quote.totalSqFt}` },
       { label: `Waste (${Math.round(quote.waste * 100)}%)`, value: `${quote.sqFtWithWaste - quote.totalSqFt}` },
@@ -268,37 +243,41 @@ export async function generatePdf(id: string): Promise<Buffer> {
       { label: 'Price / sq ft', value: formatMoney(quote.pricePerSqFt) },
     ];
 
-    doc.fontSize(10).font(FONT).fillColor('#000');
+    doc.font(FONT).fontSize(10).fillColor('#333');
     for (const row of summaryRows) {
       doc.text(row.label, LEFT, y, { width: CONTENT_W / 2 });
       doc.text(row.value, LEFT + CONTENT_W / 2, y, { width: CONTENT_W / 2, align: 'right' });
-      y += 14;
+      y += 15;
     }
 
+    // ── Total ──
     y += 2;
-    doc.fontSize(14).font(FONT).fillColor('#000');
+    doc.moveTo(LEFT, y).lineTo(RIGHT, y).lineWidth(1.5).strokeColor(ACCENT).stroke();
+    y += 10;
+    doc.font(FONT_BOLD).fontSize(15).fillColor(FONT_COLOR);
     doc.text('TOTAL', LEFT, y);
     doc.text(formatMoney(quote.total), LEFT + CONTENT_W / 2, y, { width: CONTENT_W / 2, align: 'right' });
-    y += 20;
+    y += 22;
 
     // ── Divider ──
-    doc.moveTo(LEFT, y).lineTo(RIGHT, y).strokeColor('#000').lineWidth(0.5).stroke();
-    y += 8;
+    doc.moveTo(LEFT, y).lineTo(RIGHT, y).lineWidth(0.5).strokeColor(ACCENT).stroke();
+    y += 10;
 
     // ── Disclaimers ──
-    doc.fontSize(10).font(FONT).fillColor('#000');
+    doc.font(FONT).fontSize(9).fillColor('#555');
     const disclaimer =
       'This is a quotation. Final pricing is subject to verification at time of installation.';
     doc.text(disclaimer, LEFT, y, { width: CONTENT_W, align: 'center' });
     y += doc.heightOfString(disclaimer, { width: CONTENT_W }) + 4;
 
-    doc.fontSize(10).font(FONT).fillColor('#000');
+    doc.font(FONT).fontSize(9).fillColor('#555');
     const footerText = `Generated on ${formatDate(new Date())} by ${COMPANY_NAME}.`;
-    doc.text(footerText, LEFT, y, { align: 'center', width: CONTENT_W });
+    doc.text(footerText, LEFT, y, { width: CONTENT_W, align: 'center' });
     y += doc.heightOfString(footerText, { width: CONTENT_W }) + 8;
 
     // ── QR code ──
-    y += 12;
+    const QR_SIZE = 64;
+    y += 6;
     QRCode.toBuffer(COMPANY_URL, {
       type: 'png',
       width: QR_SIZE * 4,
