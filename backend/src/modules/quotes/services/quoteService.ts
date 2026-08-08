@@ -197,12 +197,15 @@ export async function generatePdf(id: string): Promise<Buffer> {
     // ── Table header ──
     const SQFT_W = 82;
     const NO_W = 26;
+    const UNITS_W = 40;
     const MEASURE_LEFT = LEFT + NO_W;
-    const MEASURE_W = CONTENT_W - NO_W - SQFT_W;
+    const MEASURE_W = CONTENT_W - NO_W - UNITS_W - SQFT_W;
+    const UNITS_LEFT = MEASURE_LEFT + MEASURE_W;
 
     doc.font(FONT_BOLD).fontSize(10).fillColor(FONT_COLOR);
     doc.text('No.', LEFT, y, { width: NO_W });
     doc.text('MEASUREMENTS', MEASURE_LEFT, y, { width: MEASURE_W, align: 'center' });
+    doc.text('UNITS', UNITS_LEFT, y, { width: UNITS_W, align: 'center' });
     doc.text('SQUARE FEET', RIGHT - SQFT_W, y, { width: SQFT_W, align: 'right' });
     y += 15;
     doc.moveTo(LEFT, y).lineTo(RIGHT, y).lineWidth(1).strokeColor(ACCENT).stroke();
@@ -210,12 +213,13 @@ export async function generatePdf(id: string): Promise<Buffer> {
 
     // ── Items ──
     quote.items.forEach((item, i) => {
-      const measureText = `${item.ancho} inches x ${item.alto} inches x ${item.unidades} units`;
+      const measureText = `${item.ancho} inches x ${item.alto} inches`;
       const measureH = doc.heightOfString(measureText, { width: MEASURE_W });
 
       doc.font(FONT).fontSize(10).fillColor(FONT_COLOR);
       doc.text(String(i + 1), LEFT, y, { width: NO_W });
       doc.text(measureText, MEASURE_LEFT, y, { width: MEASURE_W, align: 'center' });
+      doc.text(`${item.unidades}`, UNITS_LEFT, y, { width: UNITS_W, align: 'center' });
       doc.text(`${item.sqFt}`, RIGHT - SQFT_W, y, { width: SQFT_W, align: 'right' });
       y += Math.max(measureH, 13) + 2;
 

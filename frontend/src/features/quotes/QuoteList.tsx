@@ -486,22 +486,46 @@ export default function QuoteList() {
               <p className="text-text-muted text-xs uppercase tracking-wider mb-0.5">
                 Medidas
               </p>
-              {detailQuote.items.map((item, i) => (
-                <div
-                  key={i}
-                  className="py-1 border-b border-border last:border-0"
-                >
-                  <p className="text-text-body">
-                    {item.ancho} inches x {item.alto} inches x {item.unidades} units ={' '}
-                    <span className="font-medium">{item.sqFt.toFixed(2)} square feet</span>
-                  </p>
-                  {item.nota && (
-                    <p className="text-text-muted text-xs mt-0.5">
-                      Nota: {item.nota}
-                    </p>
-                  )}
+              <div className="rounded-lg border border-border bg-bg-page overflow-hidden">
+                <div className="grid grid-cols-[1fr_0.6fr_0.7fr] gap-px border-b border-border bg-border">
+                  <div className="px-3 py-1.5 text-text-muted text-xs font-medium uppercase tracking-wider">
+                    Measure
+                  </div>
+                  <div className="px-3 py-1.5 text-text-muted text-xs font-medium uppercase tracking-wider text-center">
+                    Units
+                  </div>
+                  <div className="px-3 py-1.5 text-text-muted text-xs font-medium uppercase tracking-wider text-right">
+                    Square feet
+                  </div>
                 </div>
-              ))}
+                {detailQuote.items.map((item, i) => (
+                  <div
+                    key={i}
+                    className="grid grid-cols-[1fr_0.6fr_0.7fr] gap-px border-b border-border last:border-0 bg-border"
+                  >
+                    <div className="bg-bg-page px-3 py-2 text-sm text-text-body">
+                      {item.ancho} inches x {item.alto} inches
+                    </div>
+                    <div className="bg-bg-page px-3 py-2 text-sm text-text-body text-center">
+                      {item.unidades}
+                    </div>
+                    <div className="bg-bg-page px-3 py-2 text-sm text-text-body text-right font-medium tabular-nums">
+                      {item.sqFt.toFixed(2)}
+                    </div>
+                  </div>
+                ))}
+                {detailQuote.items.some((item) => item.nota) && (
+                  <div className="space-y-1 p-3">
+                    {detailQuote.items.map((item, i) =>
+                      item.nota ? (
+                        <p key={i} className="text-text-muted text-xs">
+                          Nota: {item.nota}
+                        </p>
+                      ) : null
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
               <div className="rounded-lg border border-border bg-bg-page p-3 space-y-1">
               <div className="flex items-center justify-between">
