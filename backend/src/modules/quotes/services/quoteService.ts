@@ -45,13 +45,10 @@ export async function getById(id: string) {
 export async function create(data: {
   clientName: string;
   items: Array<{ ancho: number; alto: number; unidades: number; nota?: string }>;
-  waste?: number;
   pricePerSqFt: number;
 }) {
   const count = await Quote.countDocuments();
   const quoteNumber = `COT-${String(count + 1).padStart(4, '0')}`;
-
-  const waste = data.waste !== undefined ? data.waste : 0.1;
 
   const items = data.items.map((item) => {
     const sqFt = round2((item.ancho * item.alto * item.unidades) / 144);
@@ -65,16 +62,13 @@ export async function create(data: {
   });
 
   const totalSqFt = round2(items.reduce((sum, it) => sum + it.sqFt, 0));
-  const sqFtWithWaste = round2(totalSqFt * (1 + waste));
-  const total = round2(data.pricePerSqFt * sqFtWithWaste);
+  const total = round2(data.pricePerSqFt * totalSqFt);
 
   const quote = await Quote.create({
     quoteNumber,
     clientName: data.clientName,
     items,
-    waste,
     totalSqFt,
-    sqFtWithWaste,
     pricePerSqFt: data.pricePerSqFt,
     total,
   });
@@ -95,7 +89,6 @@ export async function update(
   data: {
     clientName: string;
     items: Array<{ ancho: number; alto: number; unidades: number; nota?: string }>;
-    waste?: number;
     pricePerSqFt: number;
   }
 ) {
@@ -103,8 +96,6 @@ export async function update(
   if (!quote) {
     throw Object.assign(new Error('Cotización no encontrada'), { status: 404 });
   }
-
-  const waste = data.waste !== undefined ? data.waste : 0.1;
 
   const items = data.items.map((item) => {
     const sqFt = round2((item.ancho * item.alto * item.unidades) / 144);
@@ -118,14 +109,11 @@ export async function update(
   });
 
   const totalSqFt = round2(items.reduce((sum, it) => sum + it.sqFt, 0));
-  const sqFtWithWaste = round2(totalSqFt * (1 + waste));
-  const total = round2(data.pricePerSqFt * sqFtWithWaste);
+  const total = round2(data.pricePerSqFt * totalSqFt);
 
   quote.clientName = data.clientName;
   quote.items = items;
-  quote.waste = waste;
   quote.totalSqFt = totalSqFt;
-  quote.sqFtWithWaste = sqFtWithWaste;
   quote.pricePerSqFt = data.pricePerSqFt;
   quote.total = total;
 
@@ -309,7 +297,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     doc.moveTo(LEFT, y).lineTo(RIGHT, y).lineWidth(1).strokeColor(ACCENT).stroke();
     y += 8;
 
-    // ── Summary (waste is kept for the calculation but not shown on the PDF) ──
+    // ── Summary ──
     const summaryRows = [
       { label: 'Total square feet', value: `${quote.totalSqFt}` },
       { label: 'Price per square foot', value: formatMoney(quote.pricePerSqFt) },

@@ -13,9 +13,7 @@ export interface IQuote extends Document {
   clientName: string;
   date: Date;
   items: IQuoteItem[];
-  waste: number;
   totalSqFt: number;
-  sqFtWithWaste: number;
   pricePerSqFt: number;
   total: number;
 }
@@ -37,9 +35,7 @@ const QuoteSchema = new Schema<IQuote>(
     clientName: { type: String, required: true, trim: true },
     date: { type: Date, default: Date.now },
     items: [QuoteItemSchema],
-    waste: { type: Number, required: true, min: 0 },
     totalSqFt: { type: Number, required: true, min: 0 },
-    sqFtWithWaste: { type: Number, required: true, min: 0 },
     pricePerSqFt: { type: Number, required: true, min: 0 },
     total: { type: Number, required: true, min: 0 },
   },

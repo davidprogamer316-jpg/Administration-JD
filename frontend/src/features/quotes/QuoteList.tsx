@@ -51,7 +51,6 @@ export default function QuoteList() {
   const [items, setItems] = useState<DraftItem[]>([
     { ancho: '', alto: '', unidades: '1', nota: '' },
   ]);
-  const [waste, setWaste] = useState('10');
   const [pricePerSqFt, setPricePerSqFt] = useState('');
 
   async function load() {
@@ -72,7 +71,6 @@ export default function QuoteList() {
   function resetForm() {
     setClientName('');
     setItems([{ ancho: '', alto: '', unidades: '1', nota: '' }]);
-    setWaste('10');
     setPricePerSqFt('');
     setEditingId(null);
     setShowForm(false);
@@ -89,7 +87,6 @@ export default function QuoteList() {
         nota: it.nota || '',
       }))
     );
-    setWaste(String(Math.round(quote.waste * 100)));
     setPricePerSqFt(String(quote.pricePerSqFt));
     setEditingId(quote._id);
     setError('');
@@ -110,11 +107,9 @@ export default function QuoteList() {
     setItems((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== index)));
   }
 
-  const wasteNum = parseFloat(waste) / 100;
   const totalSqFt = round2(items.reduce((sum, it) => sum + sqFtOf(it), 0));
-  const sqFtWithWaste = round2(totalSqFt * (1 + (isNaN(wasteNum) ? 0 : wasteNum)));
   const priceNum = parseFloat(pricePerSqFt);
-  const total = round2(priceNum * sqFtWithWaste);
+  const total = round2(priceNum * totalSqFt);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -138,7 +133,6 @@ export default function QuoteList() {
           unidades: parseFloat(it.unidades) || 1,
           nota: it.nota,
         })),
-        waste: isNaN(wasteNum) ? 0.1 : wasteNum,
         pricePerSqFt: priceNum,
       };
       if (editingId) {
@@ -309,35 +303,20 @@ export default function QuoteList() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-text-muted text-sm mb-1">
-                  Desperdicio (%)
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={waste}
-                  onChange={(e) => setWaste(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-bg-page px-3.5 py-2.5 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-text-muted text-sm mb-1">
-                  Precio por pie cuadrado (USD)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={pricePerSqFt}
-                  onChange={(e) => setPricePerSqFt(e.target.value)}
-                  placeholder="0.00"
-                  required
-                  className="w-full rounded-lg border border-border bg-bg-page px-3.5 py-2.5 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-colors"
-                />
-              </div>
+            <div>
+              <label className="block text-text-muted text-sm mb-1">
+                Precio por pie cuadrado (USD)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={pricePerSqFt}
+                onChange={(e) => setPricePerSqFt(e.target.value)}
+                placeholder="0.00"
+                required
+                className="w-full rounded-lg border border-border bg-bg-page px-3.5 py-2.5 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-colors"
+              />
             </div>
 
             <div className="rounded-lg border border-border bg-bg-page p-4 space-y-1.5 text-sm">
@@ -345,20 +324,6 @@ export default function QuoteList() {
                 <span className="text-text-muted">Total pies²</span>
                 <span className="text-text-body font-medium tabular-nums">
                   {totalSqFt.toFixed(2)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-text-muted">
-                  Desperdicio ({isNaN(wasteNum) ? 0 : Math.round(wasteNum * 100)}%)
-                </span>
-                <span className="text-text-body font-medium tabular-nums">
-                  {round2(sqFtWithWaste - totalSqFt).toFixed(2)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-text-muted">Pies² con desperdicio</span>
-                <span className="text-text-body font-medium tabular-nums">
-                  {sqFtWithWaste.toFixed(2)}
                 </span>
               </div>
               <div className="flex items-center justify-between pt-2 border-t border-border">
@@ -436,7 +401,7 @@ export default function QuoteList() {
                     {formatDate(q.date)}
                   </td>
                   <td className="px-4 py-3 text-sm text-text-body text-right tabular-nums">
-                    {q.sqFtWithWaste.toFixed(2)}
+                    {q.totalSqFt.toFixed(2)}
                   </td>
                   <td className="px-4 py-3 text-sm text-text-body text-right font-medium tabular-nums">
                     {formatMoney(q.total)}
@@ -562,18 +527,6 @@ export default function QuoteList() {
               <div className="flex items-center justify-between">
                 <span className="text-text-muted">Total square feet</span>
                 <span className="text-text-body tabular-nums">{detailQuote.totalSqFt.toFixed(2)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-text-muted">
-                  Waste ({Math.round(detailQuote.waste * 100)}%)
-                </span>
-                <span className="text-text-body tabular-nums">
-                  {(detailQuote.sqFtWithWaste - detailQuote.totalSqFt).toFixed(2)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-text-muted">Square feet with waste</span>
-                <span className="text-text-body tabular-nums">{detailQuote.sqFtWithWaste.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-text-muted">Price per square foot</span>

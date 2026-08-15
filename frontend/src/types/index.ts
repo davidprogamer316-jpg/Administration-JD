@@ -114,9 +114,7 @@ export interface Quote {
   clientName: string;
   date: string;
   items: QuoteItem[];
-  waste: number;
   totalSqFt: number;
-  sqFtWithWaste: number;
   pricePerSqFt: number;
   total: number;
 }

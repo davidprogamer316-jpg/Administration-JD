@@ -5,6 +5,7 @@ import sharp from 'sharp';
 import { fileURLToPath } from 'url';
 import QRCode from 'qrcode';
 import { Invoice } from '../models/index.js';
+import { CarJob } from '../../carJobs/models/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -99,6 +100,21 @@ export async function generatePdf(id: string): Promise<Buffer> {
     throw Object.assign(new Error('Factura no encontrada'), { status: 404 });
   }
 
+  // ── Resolve VINs from the associated car jobs ──
+  const carJobIds = invoice.items
+    .map((item) => item.carJobId)
+    .filter((id): id is string => !!id);
+  const vinMap: Record<string, string> = {};
+  if (carJobIds.length > 0) {
+    const jobs = await CarJob.find({ _id: { $in: carJobIds } });
+    for (const job of jobs) {
+      vinMap[String(job._id)] = job.vin;
+    }
+  }
+  const vins = [...new Set(
+    carJobIds.map((id) => vinMap[id]).filter((v): v is string => !!v)
+  )];
+
   // ── Layout constants for 80 mm thermal paper ──
   // At 90% scale the user confirmed 204pt (72mm) fits in the printable area.
   // We use 204pt directly so the print dialog can use "Actual size" at 100%.
@@ -150,6 +166,10 @@ export async function generatePdf(id: string): Promise<Buffer> {
   pageH += 12;
   // Client
   pageH += 12 + 2 + textH(invoice.clientName, CONTENT_W, 11) + 2;
+  // VIN lines
+  for (const vin of vins) {
+    pageH += 2 + textH(`VIN Number: ${vin}`, CONTENT_W, 10) + 2;
+  }
   // Separator
   pageH += 12;
   // Table header
@@ -262,6 +282,15 @@ export async function generatePdf(id: string): Promise<Buffer> {
     doc.fontSize(11).font(FONT).fillColor('#000');
     doc.text(invoice.clientName, LEFT, y);
     y += textH(invoice.clientName, CONTENT_W, 11) + 2;
+
+    if (vins.length > 0) {
+      doc.fontSize(10).font(FONT).fillColor('#000');
+      for (const vin of vins) {
+        const vinText = `VIN Number: ${vin}`;
+        doc.text(vinText, LEFT, y);
+        y += doc.heightOfString(vinText, { width: CONTENT_W }) + 2;
+      }
+    }
 
     // ── Divider ──
     doc.moveTo(LEFT, y).lineTo(RIGHT, y).strokeColor('#000').lineWidth(0.5).stroke();
