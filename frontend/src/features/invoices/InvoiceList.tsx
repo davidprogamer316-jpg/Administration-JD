@@ -245,6 +245,7 @@ export default function InvoiceList() {
                                   ultra_ceramic: 'Ultra Ceramic',
                                   architectural_black: 'Architectural Black',
                                   architectural_silver: 'Architectural Silver',
+                                  architectural_black_silver: 'Architectural Black-Silver',
                                 };
                                 return labels[pt] || pt;
                               }).join(', ')}

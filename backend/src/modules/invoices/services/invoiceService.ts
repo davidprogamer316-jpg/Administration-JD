@@ -35,6 +35,18 @@ const PAPER_INFO: Record<string, { label: string; specs: string }> = {
     label: 'Ceramic Film',
     specs: 'Solar rejection: 70%, UV protection: 100%, Warranty: 2 years',
   },
+  architectural_black: {
+    label: 'Architectural Black Film',
+    specs: 'Solar rejection: 80%, UV protection: 99%, Warranty: 4 years',
+  },
+  architectural_silver: {
+    label: 'Architectural Silver Film',
+    specs: 'Solar rejection: 80%, UV protection: 99%, Warranty: 4 years',
+  },
+  architectural_black_silver: {
+    label: 'Architectural Black-Silver Film',
+    specs: 'Solar rejection: 97%, UV protection: 99%, Warranty: 6 years',
+  },
 };
 
 function formatMoney(n: number): string {
