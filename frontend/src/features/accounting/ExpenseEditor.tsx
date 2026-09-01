@@ -3,10 +3,14 @@
 import { useState } from 'react';
 import { api } from '@/lib/api';
 import type { AccountingPeriod, ExpenseItem } from '@/types';
-import { Plus, Trash2, Pencil, X, Check } from 'lucide-react';
+import { Plus, Trash2, Pencil, X, Check, ChevronDown } from 'lucide-react';
 
 function formatMoney(n: number) {
   return `$${n.toLocaleString('es-CO', { minimumFractionDigits: 2 })}`;
+}
+
+function normalizeCategory(s: string) {
+  return s.trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
 interface ExpenseEditorProps {
@@ -20,6 +24,35 @@ export default function ExpenseEditor({ period, onUpdate }: ExpenseEditorProps) 
   const [desc, setDesc] = useState('');
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
+  const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
+
+  function toggleCat(key: string) {
+    setExpandedCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }
+
+  const groups = Array.from(
+    period.expenseItems.reduce((map, item) => {
+      const key = normalizeCategory(item.description);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(item);
+      return map;
+    }, new Map<string, ExpenseItem[]>()),
+    ([key, items]) => ({
+      key,
+      name: items[0].description.trim(),
+      count: items.length,
+      total: items.reduce((sum, it) => sum + it.amount, 0),
+      items,
+    })
+  ).sort((a, b) => a.name.localeCompare(b.name, 'es'));
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -70,6 +103,7 @@ export default function ExpenseEditor({ period, onUpdate }: ExpenseEditorProps) 
     setDesc(item.description);
     setAmount(item.amount.toString());
     setShowAdd(false);
+    setExpandedCats((prev) => new Set(prev).add(normalizeCategory(item.description)));
   }
 
   function cancelEdit() {
@@ -104,74 +138,101 @@ export default function ExpenseEditor({ period, onUpdate }: ExpenseEditorProps) 
         <p className="text-xs text-danger mb-2">{error}</p>
       )}
 
-      {period.expenseItems.length === 0 && !showAdd && (
+      {groups.length === 0 && !showAdd && (
         <p className="text-xs text-text-muted">Sin gastos registrados</p>
       )}
 
-      <div className="space-y-2">
-        {period.expenseItems.map((item) => {
-          if (editItemId === item._id) {
-            return (
-              <div key={item._id} className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={desc}
-                  onChange={(e) => setDesc(e.target.value)}
-                  className="flex-1 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-text-body outline-none focus:ring-2 focus:ring-accent/40 transition-colors"
-                  placeholder="Descripción"
-                />
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="w-28 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-text-body outline-none focus:ring-2 focus:ring-accent/40 transition-colors text-right"
-                  placeholder="0.00"
-                />
-                <button
-                  onClick={() => handleUpdate(item._id!)}
-                  className="p-1 text-success hover:text-success/80 transition-colors"
-                >
-                  <Check size={14} />
-                </button>
-                <button
-                  onClick={cancelEdit}
-                  className="p-1 text-text-muted hover:text-danger transition-colors"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            );
-          }
-
+      <div className="space-y-1">
+        {groups.map((group) => {
+          const open = expandedCats.has(group.key);
           return (
-            <div
-              key={item._id}
-              className="flex items-center justify-between py-1"
-            >
-              <span className="text-xs text-text-body">{item.description}</span>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-text-body font-medium">
-                  {formatMoney(item.amount)}
+            <div key={group.key} className="rounded-lg border border-border overflow-hidden">
+              <button
+                onClick={() => toggleCat(group.key)}
+                className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-bg-page transition-colors"
+              >
+                <span className="flex items-center gap-1.5 text-xs font-medium text-text-body">
+                  <ChevronDown
+                    size={14}
+                    className={`text-text-muted transition-transform ${open ? '' : '-rotate-90'}`}
+                  />
+                  {group.name}
                 </span>
-                {!period.closed && (
-                  <>
-                    <button
-                      onClick={() => startEdit(item)}
-                      className="p-0.5 text-text-muted hover:text-accent transition-colors"
-                    >
-                      <Pencil size={12} />
-                    </button>
-                    <button
-                      onClick={() => handleRemove(item._id!)}
-                      className="p-0.5 text-text-muted hover:text-danger transition-colors"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </>
-                )}
-              </div>
+                <span className="flex items-center gap-2 text-xs text-text-muted">
+                  {group.count > 1 && <span>{group.count} gastos</span>}
+                  <span className="font-semibold text-text-body">{formatMoney(group.total)}</span>
+                </span>
+              </button>
+              {open && (
+                <div className="border-t border-border px-3 py-1">
+                  {group.items.map((item) => {
+                    if (editItemId === item._id) {
+                      return (
+                        <div key={item._id} className="flex items-center gap-2 py-1">
+                          <input
+                            type="text"
+                            value={desc}
+                            onChange={(e) => setDesc(e.target.value)}
+                            className="flex-1 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-text-body outline-none focus:ring-2 focus:ring-accent/40 transition-colors"
+                            placeholder="Descripción"
+                          />
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            className="w-28 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-text-body outline-none focus:ring-2 focus:ring-accent/40 transition-colors text-right"
+                            placeholder="0.00"
+                          />
+                          <button
+                            onClick={() => handleUpdate(item._id!)}
+                            className="p-1 text-success hover:text-success/80 transition-colors"
+                          >
+                            <Check size={14} />
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            className="p-1 text-text-muted hover:text-danger transition-colors"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div
+                        key={item._id}
+                        className="flex items-center justify-between py-1"
+                      >
+                        <span className="text-xs text-text-body">{item.description}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-text-body font-medium">
+                            {formatMoney(item.amount)}
+                          </span>
+                          {!period.closed && (
+                            <>
+                              <button
+                                onClick={() => startEdit(item)}
+                                className="p-0.5 text-text-muted hover:text-accent transition-colors"
+                              >
+                                <Pencil size={12} />
+                              </button>
+                              <button
+                                onClick={() => handleRemove(item._id!)}
+                                className="p-0.5 text-text-muted hover:text-danger transition-colors"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })}
