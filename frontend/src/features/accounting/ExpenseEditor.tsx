@@ -54,6 +54,11 @@ export default function ExpenseEditor({ period, onUpdate }: ExpenseEditorProps) 
     })
   ).sort((a, b) => a.name.localeCompare(b.name, 'es'));
 
+  const categoryListId = `expense-cat-${period._id}`;
+  const categoryNames = Array.from(
+    new Set(period.expenseItems.map((item) => item.description.trim()).filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b, 'es'));
+
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setError('');
@@ -136,6 +141,49 @@ export default function ExpenseEditor({ period, onUpdate }: ExpenseEditorProps) 
 
       {error && (
         <p className="text-xs text-danger mb-2">{error}</p>
+      )}
+
+      {showAdd && (
+        <form onSubmit={handleAdd} className="flex items-center gap-2 mb-3">
+          <input
+            type="text"
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+            list={categoryListId}
+            autoFocus
+            className="flex-1 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-text-body outline-none focus:ring-2 focus:ring-accent/40 transition-colors"
+            placeholder="Descripción del gasto"
+            required
+          />
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="w-28 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-text-body outline-none focus:ring-2 focus:ring-accent/40 transition-colors text-right"
+            placeholder="0.00"
+            required
+          />
+          <button
+            type="submit"
+            className="p-1 text-success hover:text-success/80 transition-colors"
+          >
+            <Check size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowAdd(false)}
+            className="p-1 text-text-muted hover:text-danger transition-colors"
+          >
+            <X size={14} />
+          </button>
+          <datalist id={categoryListId}>
+            {categoryNames.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
+        </form>
       )}
 
       {groups.length === 0 && !showAdd && (
@@ -243,42 +291,6 @@ export default function ExpenseEditor({ period, onUpdate }: ExpenseEditorProps) 
           <span>Total</span>
           <span>{formatMoney(period.expenseItems.reduce((sum, item) => sum + item.amount, 0))}</span>
         </div>
-      )}
-
-      {showAdd && (
-        <form onSubmit={handleAdd} className="flex items-center gap-2 mt-2">
-          <input
-            type="text"
-            value={desc}
-            onChange={(e) => setDesc(e.target.value)}
-            className="flex-1 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-text-body outline-none focus:ring-2 focus:ring-accent/40 transition-colors"
-            placeholder="Descripción del gasto"
-            required
-          />
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="w-28 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-text-body outline-none focus:ring-2 focus:ring-accent/40 transition-colors text-right"
-            placeholder="0.00"
-            required
-          />
-          <button
-            type="submit"
-            className="p-1 text-success hover:text-success/80 transition-colors"
-          >
-            <Check size={14} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowAdd(false)}
-            className="p-1 text-text-muted hover:text-danger transition-colors"
-          >
-            <X size={14} />
-          </button>
-        </form>
       )}
     </div>
   );
