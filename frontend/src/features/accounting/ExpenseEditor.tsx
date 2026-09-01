@@ -177,6 +177,13 @@ export default function ExpenseEditor({ period, onUpdate }: ExpenseEditorProps) 
         })}
       </div>
 
+      {period.expenseItems.length > 0 && (
+        <div className="flex items-center justify-between text-xs font-semibold text-text-body pt-2 border-t border-border mt-2">
+          <span>Total</span>
+          <span>{formatMoney(period.expenseItems.reduce((sum, item) => sum + item.amount, 0))}</span>
+        </div>
+      )}
+
       {showAdd && (
         <form onSubmit={handleAdd} className="flex items-center gap-2 mt-2">
           <input

@@ -242,6 +242,10 @@ export default function AccountingDetailPage() {
                         <span className="font-medium">{formatMoney(fe.amount)}</span>
                       </div>
                     ))}
+                    <div className="flex items-center justify-between text-sm font-semibold text-text-body pt-2 border-t border-border mt-2">
+                      <span>Total</span>
+                      <span>{formatMoney(period.fixedExpenses.reduce((sum, fe) => sum + fe.amount, 0))}</span>
+                    </div>
                   </div>
                   <hr className="my-3 border-border" />
                 </div>
