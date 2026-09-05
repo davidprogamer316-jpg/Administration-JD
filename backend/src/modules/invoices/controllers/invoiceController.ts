@@ -3,8 +3,8 @@ import * as invoiceService from '../services/invoiceService.js';
 
 export async function list(req: Request, res: Response, next: NextFunction) {
   try {
-    const { clientName } = req.query as Record<string, string | undefined>;
-    const invoices = await invoiceService.list({ clientName });
+    const { clientName, invoiceNumber } = req.query as Record<string, string | undefined>;
+    const invoices = await invoiceService.list({ clientName, invoiceNumber });
     res.json(invoices);
   } catch (err) {
     next(err);

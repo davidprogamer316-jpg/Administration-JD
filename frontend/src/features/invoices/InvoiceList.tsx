@@ -32,11 +32,13 @@ export default function InvoiceList() {
   const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
   const [search, setSearch] = useState('');
+  const [searchNumber, setSearchNumber] = useState('');
 
-  async function load(clientFilter?: string) {
+  async function load(clientFilter?: string, invoiceFilter?: string) {
     try {
       const params = new URLSearchParams();
       if (clientFilter) params.set('clientName', clientFilter);
+      if (invoiceFilter) params.set('invoiceNumber', invoiceFilter);
       const qs = params.toString();
       const res = await api.get<Invoice[]>(`/invoices${qs ? `?${qs}` : ''}`);
       setInvoices(res);
@@ -95,7 +97,7 @@ export default function InvoiceList() {
           date: j.date,
         };
         const surchargeItem = j.paymentMethod === 'credito_debito' && j.cardSurcharge > 0
-          ? { description: `Card processing fee (3.6%) — ${j.vin}`, amount: j.cardSurcharge, carJobId: j._id }
+          ? { description: 'Card processing fee (3.6%)', amount: j.cardSurcharge, carJobId: j._id }
           : null;
         return surchargeItem ? [mainItem, surchargeItem] : [mainItem];
       });
@@ -141,10 +143,18 @@ export default function InvoiceList() {
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por cliente..."
               className="w-48 rounded-lg border border-border bg-bg-page px-3 py-2 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 transition-colors"
-              onKeyDown={(e) => { if (e.key === 'Enter') load(search); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') load(search, searchNumber); }}
+            />
+            <input
+              type="text"
+              value={searchNumber}
+              onChange={(e) => setSearchNumber(e.target.value)}
+              placeholder="Buscar por No. factura..."
+              className="w-48 rounded-lg border border-border bg-bg-page px-3 py-2 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 transition-colors"
+              onKeyDown={(e) => { if (e.key === 'Enter') load(search, searchNumber); }}
             />
             <button
-              onClick={() => load(search)}
+              onClick={() => load(search, searchNumber)}
               className="p-2 text-text-muted hover:text-accent transition-colors"
             >
               <Search size={18} />

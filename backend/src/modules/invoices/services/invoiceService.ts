@@ -61,10 +61,17 @@ function formatDate(date: Date): string {
   });
 }
 
-export async function list(filters?: { clientName?: string }) {
+function cleanDescription(description: string): string {
+  return description.replace(/^(Card processing fee \(3\.6%\)) — [A-Z0-9]+$/, '$1');
+}
+
+export async function list(filters?: { clientName?: string; invoiceNumber?: string }) {
   const query: Record<string, unknown> = {};
   if (filters?.clientName) {
     query.clientName = { $regex: filters.clientName, $options: 'i' };
+  }
+  if (filters?.invoiceNumber) {
+    query.invoiceNumber = { $regex: filters.invoiceNumber, $options: 'i' };
   }
   return Invoice.find(query).sort({ date: -1 });
 }
@@ -90,7 +97,10 @@ export async function create(data: {
   const invoice = await Invoice.create({
     invoiceNumber,
     clientName: data.clientName,
-    items: data.items,
+    items: data.items.map((item) => ({
+      ...item,
+      description: cleanDescription(item.description),
+    })),
     total,
     notes: data.notes || '',
   });
@@ -188,7 +198,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
   pageH += 18;
   // Items
   for (const item of invoice.items) {
-    const itemH = Math.max(20, textH(item.description, DESC_W, 11) + 4);
+    const itemH = Math.max(20, textH(cleanDescription(item.description), DESC_W, 11) + 4);
     let paperH = 0;
     if (item.date) {
       paperH += 2 + textH(`Date: ${item.date}`, CONTENT_W, 9) + 2;
@@ -317,10 +327,11 @@ export async function generatePdf(id: string): Promise<Buffer> {
     // ── Table rows ──
     for (const item of invoice.items) {
       doc.fontSize(11).font(FONT).fillColor('#000');
-      const descH = doc.heightOfString(item.description, { width: DESC_W });
+      const descText = cleanDescription(item.description);
+      const descH = doc.heightOfString(descText, { width: DESC_W });
       let rowH = Math.max(20, descH + 4);
 
-      doc.text(item.description, LEFT, y + 2, { width: DESC_W });
+      doc.text(descText, LEFT, y + 2, { width: DESC_W });
       doc.text(formatMoney(item.amount), PRICE_X, y + 2, { width: PRICE_W, align: 'right' });
 
       y += rowH;

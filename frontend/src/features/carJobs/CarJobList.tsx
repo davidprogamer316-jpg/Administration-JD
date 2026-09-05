@@ -224,7 +224,7 @@ export default function CarJobList() {
     ];
     if (detailJob.paymentMethod === 'credito_debito' && detailJob.cardSurcharge > 0) {
       items.push({
-        description: `Card processing fee (3.6%) — ${detailJob.vin}`,
+        description: 'Card processing fee (3.6%)',
         amount: detailJob.cardSurcharge,
         carJobId: detailJob._id,
       });
