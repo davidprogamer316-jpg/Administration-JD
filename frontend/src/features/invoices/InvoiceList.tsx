@@ -20,6 +20,10 @@ function formatMoney(n: number) {
   return `$${n.toLocaleString('es-CO', { minimumFractionDigits: 2 })}`;
 }
 
+function cleanDescription(description: string) {
+  return description.replace(/^(Card processing fee \(3\.6%\)) — [A-Z0-9]+$/, '$1');
+}
+
 export default function InvoiceList() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -417,7 +421,7 @@ export default function InvoiceList() {
                   key={i}
                   className="flex items-center justify-between py-1 border-b border-border last:border-0"
                 >
-                  <span className="text-text-body">{item.description}</span>
+                  <span className="text-text-body">{cleanDescription(item.description)}</span>
                   <span className="text-text-body font-medium">
                     {formatMoney(item.amount)}
                   </span>
