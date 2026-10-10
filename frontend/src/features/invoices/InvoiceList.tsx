@@ -6,6 +6,7 @@ import { downloadFromApi } from '@/lib/download';
 import type { CarJob, Invoice } from '@/types';
 import { Plus, FileDown, Trash2, Eye, Search } from 'lucide-react';
 import Modal from '@/components/Modal';
+import VinScanner from '@/components/VinScanner';
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('es-ES', {
@@ -37,12 +38,14 @@ export default function InvoiceList() {
   const [loadingJobs, setLoadingJobs] = useState(false);
   const [search, setSearch] = useState('');
   const [searchNumber, setSearchNumber] = useState('');
+  const [searchVin, setSearchVin] = useState('');
 
-  async function load(clientFilter?: string, invoiceFilter?: string) {
+  async function load(clientFilter?: string, invoiceFilter?: string, vinFilter?: string) {
     try {
       const params = new URLSearchParams();
       if (clientFilter) params.set('clientName', clientFilter);
       if (invoiceFilter) params.set('invoiceNumber', invoiceFilter);
+      if (vinFilter) params.set('vin', vinFilter);
       const qs = params.toString();
       const res = await api.get<Invoice[]>(`/invoices${qs ? `?${qs}` : ''}`);
       setInvoices(res);
@@ -140,14 +143,14 @@ export default function InvoiceList() {
           <p className="text-text-muted text-sm">
             {invoices.length} factura{invoices.length !== 1 ? 's' : ''} registrada{invoices.length !== 1 ? 's' : ''}
           </p>
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por cliente..."
               className="w-48 rounded-lg border border-border bg-bg-page px-3 py-2 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 transition-colors"
-              onKeyDown={(e) => { if (e.key === 'Enter') load(search, searchNumber); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') load(search, searchNumber, searchVin); }}
             />
             <input
               type="text"
@@ -155,14 +158,29 @@ export default function InvoiceList() {
               onChange={(e) => setSearchNumber(e.target.value)}
               placeholder="Buscar por No. factura..."
               className="w-48 rounded-lg border border-border bg-bg-page px-3 py-2 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 transition-colors"
-              onKeyDown={(e) => { if (e.key === 'Enter') load(search, searchNumber); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') load(search, searchNumber, searchVin); }}
+            />
+            <input
+              type="text"
+              value={searchVin}
+              onChange={(e) => setSearchVin(e.target.value)}
+              placeholder="Buscar por VIN..."
+              className="w-48 rounded-lg border border-border bg-bg-page px-3 py-2 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 transition-colors"
+              onKeyDown={(e) => { if (e.key === 'Enter') load(search, searchNumber, searchVin); }}
             />
             <button
-              onClick={() => load(search, searchNumber)}
+              onClick={() => load(search, searchNumber, searchVin)}
               className="p-2 text-text-muted hover:text-accent transition-colors"
+              title="Buscar"
             >
               <Search size={18} />
             </button>
+            <VinScanner
+              onScan={(vin) => {
+                setSearchVin(vin);
+                load(search, searchNumber, vin);
+              }}
+            />
           </div>
         </div>
         <button

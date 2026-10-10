@@ -65,13 +65,21 @@ function cleanDescription(description: string): string {
   return description.replace(/^(Card processing fee \(3\.6%\)) — [A-Z0-9]+$/, '$1');
 }
 
-export async function list(filters?: { clientName?: string; invoiceNumber?: string }) {
+export async function list(filters?: { clientName?: string; invoiceNumber?: string; vin?: string }) {
   const query: Record<string, unknown> = {};
   if (filters?.clientName) {
     query.clientName = { $regex: filters.clientName, $options: 'i' };
   }
   if (filters?.invoiceNumber) {
     query.invoiceNumber = { $regex: filters.invoiceNumber, $options: 'i' };
+  }
+  if (filters?.vin) {
+    const jobs = await CarJob.find({ vin: { $regex: filters.vin, $options: 'i' } }).select('_id');
+    const jobIds = jobs.map((job) => job._id);
+    if (jobIds.length === 0) {
+      return [];
+    }
+    query['items.carJobId'] = { $in: jobIds };
   }
   return Invoice.find(query).sort({ date: -1 });
 }
