@@ -2,20 +2,17 @@ import PDFDocument from 'pdfkit';
 import path from 'path';
 import fs from 'fs';
 import sharp from 'sharp';
-import { fileURLToPath } from 'url';
 import QRCode from 'qrcode';
 import { Invoice } from '../models/index.js';
 import { CarJob } from '../../carJobs/models/index.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { env } from '../../../config/env.js';
 
 const COMPANY_NAME = 'WINDOWS TINTING JD CORP';
 const COMPANY_TAGLINE = 'Mobile tinting service — we come to you';
 const COMPANY_PHONE = '786 793 4440';
 const COMPANY_URL = 'https://tinting-film.com';
 
-const LOGO_PATH = path.join(__dirname, '../../../../assets/logo.PNG');
+const LOGO_PATH = path.join(env.assetsDir, 'logo.PNG');
 const QR_SIZE = 72;
 
 const PAPER_INFO: Record<string, { label: string; specs: string }> = {
@@ -246,7 +243,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
   doc.on('data', (chunk) => chunks.push(chunk));
 
   // ── Register Courier Prime (bundled TTF) ──
-  const FONT_DIR = path.join(__dirname, '../../../../assets/fonts');
+  const FONT_DIR = path.join(env.assetsDir, 'fonts');
   const CP_REG = path.join(FONT_DIR, 'CourierPrime.ttf');
   const CP_BOLD = path.join(FONT_DIR, 'CourierPrime-Bold.ttf');
   if (fs.existsSync(CP_REG)) {

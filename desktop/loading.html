@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'self'" />
+    <title>Tinting-JD</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        background: #0f172a;
+        color: #e2e8f0;
+      }
+      .spinner {
+        width: 44px;
+        height: 44px;
+        border: 3px solid #334155;
+        border-top-color: #6366f1;
+        border-radius: 50%;
+        animation: spin 0.9s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      p { margin: 0; font-size: 15px; color: #94a3b8; }
+      h1 { margin: 0; font-size: 20px; }
+    </style>
+  </head>
+  <body>
+    <h1>Tinting-JD</h1>
+    <div class="spinner"></div>
+    <p id="msg">Iniciando…</p>
+    <script src="loading.js"></script>
+  </body>
+</html>

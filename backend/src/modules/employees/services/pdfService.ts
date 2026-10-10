@@ -1,13 +1,10 @@
 import PDFDocument from 'pdfkit';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
 import { AccountingPeriod } from '../../accounting/models/index.js';
 import { CarJob, ICarJob } from '../../carJobs/models/index.js';
 import { Employee } from '../models/index.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { env } from '../../../config/env.js';
 
 const COMPANY_NAME = 'Windows Tinting';
 const COMPANY_NAME2 = 'JD';
@@ -118,7 +115,7 @@ export async function generateEmployeePdf(
   doc.on('data', (chunk) => chunks.push(chunk));
 
   // Register Courier Prime
-  const FONT_DIR = path.join(__dirname, '../../../../assets/fonts');
+  const FONT_DIR = path.join(env.assetsDir, 'fonts');
   const CP_REG = path.join(FONT_DIR, 'CourierPrime.ttf');
   const CP_BOLD = path.join(FONT_DIR, 'CourierPrime-Bold.ttf');
   if (fs.existsSync(CP_REG)) {
