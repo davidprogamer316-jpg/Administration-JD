@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { env } from './config/env.js';
-import { connectDatabase } from './config/database.js';
+import { connectDatabase, isDbConnected } from './config/database.js';
 import authRoutes from './modules/auth/routes/authRoutes.js';
 import employeeRoutes from './modules/employees/routes/employeeRoutes.js';
 import carJobRoutes from './modules/carJobs/routes/carJobRoutes.js';
@@ -30,7 +30,7 @@ app.use(cors({
 app.use(express.json());
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', version: '0.5.0' });
+  res.json({ status: 'ok', version: '0.5.0', db: isDbConnected() ? 'up' : 'down' });
 });
 
 app.use('/api/auth', authRoutes);

@@ -123,9 +123,48 @@ function ping(url) {
   });
 }
 
+function getJson(url) {
+  return new Promise((resolve) => {
+    const req = http.get(url, (res) => {
+      let data = '';
+      res.on('data', (c) => (data += c));
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(data));
+        } catch {
+          resolve(null);
+        }
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.setTimeout(1500, () => {
+      req.destroy();
+      resolve(null);
+    });
+  });
+}
+
 async function waitFor(url, attempts, delay) {
   for (let i = 0; i < attempts; i++) {
     if (await ping(url)) return true;
+    await new Promise((r) => setTimeout(r, delay));
+  }
+  return false;
+}
+
+async function waitForHealth(attempts, delay) {
+  for (let i = 0; i < attempts; i++) {
+    const h = await getJson(`http://${API_HOST}:${API_PORT}/api/health`);
+    if (h && h.status === 'ok') return h;
+    await new Promise((r) => setTimeout(r, delay));
+  }
+  return null;
+}
+
+async function waitForDbUp(attempts, delay) {
+  for (let i = 0; i < attempts; i++) {
+    const h = await getJson(`http://${API_HOST}:${API_PORT}/api/health`);
+    if (h && h.status === 'ok' && h.db === 'up') return true;
     await new Promise((r) => setTimeout(r, delay));
   }
   return false;
@@ -136,8 +175,24 @@ function loadSetup(message) {
   mainWindow.loadFile(path.join(__dirname, 'setup.html'), query ? { query } : undefined);
 }
 
+function loadReconnect(message) {
+  mainWindow.loadFile(path.join(__dirname, 'reconnect.html'), message ? { query: { msg: message } } : undefined);
+}
+
 function loadLoading(msg) {
   mainWindow.loadFile(path.join(__dirname, 'loading.html'), msg ? { query: { msg } } : undefined);
+}
+
+async function startAppFlow() {
+  loadLoading('Cargando interfaz…');
+  if (!frontendProc) startFrontend();
+  const webOk = await waitFor(WEB_URL, 80, 500);
+  if (!webOk) {
+    stopServers();
+    loadReconnect('No se pudo iniciar la interfaz del programa.');
+    return;
+  }
+  mainWindow.loadURL(WEB_URL);
 }
 
 async function boot() {
@@ -153,23 +208,22 @@ async function boot() {
   stopServers();
   startBackend(cfg);
 
-  const apiOk = await waitFor(`http://${API_HOST}:${API_PORT}/api/health`, 60, 500);
-  if (!apiOk) {
+  const health = await waitForHealth(60, 500);
+  if (!health) {
     stopServers();
-    loadSetup('No se pudo conectar a la base de datos. Revisa la cadena de conexión.');
+    loadReconnect('No se pudo iniciar el servidor local. Verifica tu conexión a internet.');
     return;
   }
 
-  loadLoading('Cargando interfaz…');
-  startFrontend();
-  const webOk = await waitFor(WEB_URL, 80, 500);
-  if (!webOk) {
-    stopServers();
-    loadSetup('No se pudo iniciar la interfaz del programa.');
+  if (health.db !== 'up') {
+    loadReconnect('La base de datos no responde. Reintentando automáticamente…');
+    waitForDbUp(60, 2000).then((ok) => {
+      if (ok && mainWindow) startAppFlow();
+    });
     return;
   }
 
-  mainWindow.loadURL(WEB_URL);
+  await startAppFlow();
 }
 
 function createMainWindow() {
@@ -247,6 +301,16 @@ ipcMain.handle('config:save', (_event, payload) => {
   const cfg = ensureJwtSecret({ ...readConfig(), mongodbUri: uri });
   saveConfig(cfg);
   boot();
+  return { ok: true };
+});
+
+ipcMain.handle('app:retry', () => {
+  boot();
+  return { ok: true };
+});
+
+ipcMain.handle('app:configure', () => {
+  loadSetup();
   return { ok: true };
 });
 

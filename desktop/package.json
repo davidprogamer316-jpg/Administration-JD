@@ -1,6 +1,6 @@
 {
   "name": "tinting-jd-desktop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Tinting-JD desktop app (local backend + frontend, MongoDB Atlas)",
   "main": "main.js",
@@ -26,7 +26,9 @@
       "setup.html",
       "setup.js",
       "loading.html",
-      "loading.js"
+      "loading.js",
+      "reconnect.html",
+      "reconnect.js"
     ],
     "extraResources": [
       {
