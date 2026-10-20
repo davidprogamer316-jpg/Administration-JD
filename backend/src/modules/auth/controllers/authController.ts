@@ -26,8 +26,8 @@ export async function login(
   next: NextFunction
 ) {
   try {
-    const { email, password } = req.body;
-    const result = await authService.login(email, password);
+    const { email, password, remember } = req.body;
+    const result = await authService.login(email, password, Boolean(remember));
     res.json(result);
   } catch (err: any) {
     if (err.status === 423) {

@@ -1,9 +1,10 @@
-const { app, BrowserWindow, Menu, shell, session, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, shell, session, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
+const { checkForUpdates } = require('./updater');
 
 const API_PORT = 4311;
 const WEB_PORT = 4310;
@@ -282,6 +283,22 @@ function buildMenu() {
         { type: 'separator' },
         { role: 'togglefullscreen' },
         { role: 'toggleDevTools' },
+      ],
+    },
+    {
+      label: 'Ayuda',
+      submenu: [
+        { label: 'Buscar actualizaciones…', click: () => checkForUpdates(mainWindow) },
+        { type: 'separator' },
+        {
+          label: 'Acerca de',
+          click: () =>
+            dialog.showMessageBox({
+              type: 'info',
+              message: 'Tinting-JD',
+              detail: `Versión ${app.getVersion()}`,
+            }),
+        },
       ],
     },
   ];

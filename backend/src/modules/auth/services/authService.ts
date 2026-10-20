@@ -3,9 +3,12 @@ import jwt from 'jsonwebtoken';
 import { AdminUser, IAdminUser } from '../models/index.js';
 import { env } from '../../../config/env.js';
 
-function generateToken(user: IAdminUser): string {
+const DAY_SECONDS = 24 * 60 * 60;
+const REMEMBER_SECONDS = 30 * DAY_SECONDS;
+
+function generateToken(user: IAdminUser, remember = false): string {
   return jwt.sign({ id: user._id.toString() }, env.jwtSecret, {
-    expiresIn: 86400,
+    expiresIn: remember ? REMEMBER_SECONDS : DAY_SECONDS,
   });
 }
 
@@ -46,7 +49,7 @@ export async function register(
   };
 }
 
-export async function login(email: string, password: string) {
+export async function login(email: string, password: string, remember = false) {
   const user = await AdminUser.findOne({ email: email.toLowerCase() });
 
   if (!user) {
@@ -82,7 +85,7 @@ export async function login(email: string, password: string) {
   user.lastLogin = new Date();
   await user.save();
 
-  const token = generateToken(user);
+  const token = generateToken(user, remember);
 
   return {
     token,

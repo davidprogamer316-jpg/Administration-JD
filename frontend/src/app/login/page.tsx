@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, Eye, EyeOff, ShieldOff } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
@@ -12,9 +12,15 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(true);
   const [error, setError] = useState('');
   const [locked, setLocked] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('lastEmail');
+    if (saved) setEmail(saved);
+  }, []);
 
   if (user) {
     router.replace('/');
@@ -28,7 +34,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await login(email, password);
+      await login(email, password, remember);
       router.replace('/');
     } catch (err) {
       if (err instanceof ApiError) {
@@ -140,6 +146,16 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
+
+          <label className="flex items-center gap-2.5 text-sm text-white/60 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="h-4 w-4 rounded border-white/20 bg-white/5 accent-accent"
+            />
+            Mantener sesión iniciada (30 días)
+          </label>
 
           <button
             type="submit"

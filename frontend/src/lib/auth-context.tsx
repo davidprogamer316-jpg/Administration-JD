@@ -8,7 +8,7 @@ interface AuthContextType {
   user: AdminUser | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, remember?: boolean) => Promise<void>;
   register: (email: string, password: string, fullName: string) => Promise<void>;
   logout: () => void;
 }
@@ -17,6 +17,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 const IDLE_TIMEOUT_MS = 3 * 60 * 60 * 1000; // 3 hours
 const AUTH_ME_TIMEOUT_MS = 10_000; // 10 seconds
+const REMEMBER_KEY = 'rememberSession';
 
 function fetchWithTimeout(url: string, ms: number, authToken: string): Promise<Response> {
   const controller = new AbortController();
@@ -34,14 +35,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     localStorage.removeItem('token');
+    localStorage.removeItem(REMEMBER_KEY);
     setToken(null);
     setUser(null);
     setLoading(false);
   }, []);
 
-  // Idle auto-logout
+  // Idle auto-logout (skipped while "keep me signed in" is enabled)
   useEffect(() => {
     if (!token) return;
+    if (localStorage.getItem(REMEMBER_KEY) === 'true') return;
 
     let timeout: ReturnType<typeof setTimeout>;
     function resetTimer() {
@@ -82,9 +85,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await api.post<{ token: string; user: AdminUser }>('/auth/login', { email, password });
+  const login = useCallback(async (email: string, password: string, remember = false) => {
+    const res = await api.post<{ token: string; user: AdminUser }>('/auth/login', { email, password, remember });
     localStorage.setItem('token', res.token);
+    localStorage.setItem('lastEmail', email);
+    if (remember) {
+      localStorage.setItem(REMEMBER_KEY, 'true');
+    } else {
+      localStorage.removeItem(REMEMBER_KEY);
+    }
     setToken(res.token);
     setUser(res.user);
   }, []);
@@ -92,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(async (email: string, password: string, fullName: string) => {
     const res = await api.post<{ token: string; user: AdminUser }>('/auth/register', { email, password, fullName });
     localStorage.setItem('token', res.token);
+    localStorage.setItem('lastEmail', email);
     setToken(res.token);
     setUser(res.user);
   }, []);
