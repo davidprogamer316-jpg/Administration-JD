@@ -12,10 +12,10 @@ export function authenticateToken(
   next: NextFunction
 ): void {
   const authHeader = req.headers['authorization'];
-  let token = authHeader && authHeader.split(' ')[1];
-  if (!token) {
-    token = req.query.token as string | undefined;
-  }
+  const token =
+    authHeader && authHeader.startsWith('Bearer ')
+      ? authHeader.slice('Bearer '.length).trim()
+      : undefined;
 
   if (!token) {
     res.status(401).json({ message: 'Token requerido' });
@@ -23,7 +23,13 @@ export function authenticateToken(
   }
 
   try {
-    const decoded = jwt.verify(token, env.jwtSecret) as { id: string };
+    const decoded = jwt.verify(token, env.jwtSecret, {
+      algorithms: ['HS256'],
+    }) as { id?: unknown };
+    if (typeof decoded.id !== 'string' || !decoded.id) {
+      res.status(401).json({ message: 'Token inválido o expirado' });
+      return;
+    }
     req.userId = decoded.id;
     next();
   } catch {

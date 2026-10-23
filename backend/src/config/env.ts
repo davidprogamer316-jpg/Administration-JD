@@ -9,6 +9,7 @@ const __dirname = path.dirname(__filename);
 
 export const env = {
   port: parseInt(process.env.PORT || '4000', 10),
+  host: process.env.HOST || '0.0.0.0',
   assetsDir: process.env.ASSETS_DIR || path.join(__dirname, '../../assets'),
   mongodbUri: process.env.MONGODB_URI || 'mongodb+srv://<user>:<password>@cluster0.xxxxx.mongodb.net/tinting-jd?retryWrites=true&w=majority',
   jwtSecret: process.env.JWT_SECRET || 'dev-secret-change-in-production',
@@ -22,5 +23,5 @@ export const env = {
       try { return new URL(s.trim()).origin; } catch { return s.trim(); }
     }).filter(Boolean);
   })(),
-  allowVercelPreviews: process.env.CORS_ALLOW_VERCEL_PREVIEWS !== 'false',
+  allowVercelPreviews: process.env.CORS_ALLOW_VERCEL_PREVIEWS === 'true',
 };

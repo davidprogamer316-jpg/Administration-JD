@@ -53,7 +53,14 @@ const backendLock = path.join(backendDirSrc, 'package-lock.json');
 if (fs.existsSync(backendLock)) {
   fs.copyFileSync(backendLock, path.join(backendOut, 'package-lock.json'));
 }
-run('npm', ['install', '--omit=dev', '--no-audit', '--no-fund'], { cwd: backendOut });
+const backendHasLock = fs.existsSync(path.join(backendOut, 'package-lock.json'));
+run(
+  'npm',
+  backendHasLock
+    ? ['ci', '--omit=dev', '--no-audit', '--no-fund']
+    : ['install', '--omit=dev', '--no-audit', '--no-fund'],
+  { cwd: backendOut }
+);
 
 // ── Frontend ─────────────────────────────────────────────
 run('npm', ['run', 'build'], {

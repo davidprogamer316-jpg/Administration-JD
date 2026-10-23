@@ -5,11 +5,18 @@ export async function list() {
 }
 
 export async function create(data: { name: string; amount: number }) {
-  return FixedExpense.create(data);
+  return FixedExpense.create({ name: data.name, amount: data.amount });
 }
 
 export async function update(id: string, data: { name?: string; amount?: number }) {
-  const fe = await FixedExpense.findByIdAndUpdate(id, data, { new: true, runValidators: true });
+  const patch: { name?: string; amount?: number } = {};
+  if (data.name !== undefined) patch.name = data.name;
+  if (data.amount !== undefined) patch.amount = data.amount;
+
+  const fe = await FixedExpense.findByIdAndUpdate(id, patch, {
+    new: true,
+    runValidators: true,
+  });
   if (!fe) {
     throw Object.assign(new Error('Gasto fijo no encontrado'), { status: 404 });
   }

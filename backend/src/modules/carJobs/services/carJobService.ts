@@ -1,6 +1,7 @@
 import { CarJob } from '../models/index.js';
 import { AccountingPeriod } from '../../accounting/models/index.js';
 import { getQuincena, formatQuincena } from '../../../shared/utils/quincena.js';
+import { escapeRegex } from '../../../shared/utils/regex.js';
 import { recalculateById } from '../../accounting/services/accountingService.js';
 import { Employee } from '../../employees/models/index.js';
 
@@ -59,7 +60,7 @@ export async function list(filters?: { startDate?: string; endDate?: string; vin
   }
 
   if (filters?.vin) {
-    query.vin = { $regex: filters.vin, $options: 'i' };
+    query.vin = { $regex: escapeRegex(String(filters.vin)), $options: 'i' };
   }
 
   return CarJob.find(query).sort({ date: -1 });

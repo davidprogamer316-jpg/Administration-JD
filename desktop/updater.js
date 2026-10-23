@@ -8,6 +8,33 @@ const REPO = 'Administration-JD';
 const RELEASES_URL = `https://api.github.com/repos/${OWNER}/${REPO}/releases/latest`;
 const USER_AGENT = 'Tinting-JD-Desktop';
 
+const ALLOWED_ASSET_HOSTS = [
+  'github.com',
+  'objects.githubusercontent.com',
+  'github-releases.githubusercontent.com',
+];
+
+function isAllowedAssetUrl(raw) {
+  try {
+    const url = new URL(raw);
+    return url.protocol === 'https:' && ALLOWED_ASSET_HOSTS.includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function hasPeHeader(file) {
+  try {
+    const fd = fs.openSync(file, 'r');
+    const header = Buffer.alloc(2);
+    fs.readSync(fd, header, 0, 2, 0);
+    fs.closeSync(fd);
+    return header[0] === 0x4d && header[1] === 0x5a;
+  } catch {
+    return false;
+  }
+}
+
 function parseVersion(value) {
   return String(value || '')
     .replace(/^v/i, '')
@@ -143,6 +170,23 @@ async function checkForUpdates(mainWindow) {
     return;
   }
 
+  if (!isAllowedAssetUrl(installer.browser_download_url)) {
+    await dialog.showMessageBox({
+      type: 'error',
+      message: 'El origen de la actualización no es válido.',
+    });
+    return;
+  }
+
+  const safeName = path.basename(installer.name || '');
+  if (!/\.exe$/i.test(safeName)) {
+    await dialog.showMessageBox({
+      type: 'error',
+      message: 'El archivo de actualización no es un instalador válido.',
+    });
+    return;
+  }
+
   const sizeMb = installer.size ? Math.round(installer.size / 1024 / 1024) : null;
   const confirm = await dialog.showMessageBox({
     type: 'question',
@@ -156,7 +200,7 @@ async function checkForUpdates(mainWindow) {
   });
   if (confirm.response !== 0) return;
 
-  const destination = path.join(app.getPath('temp'), installer.name);
+  const destination = path.join(app.getPath('temp'), safeName);
   try {
     if (mainWindow) mainWindow.setProgressBar(0);
     await download(installer.browser_download_url, destination, (fraction) => {
@@ -169,6 +213,15 @@ async function checkForUpdates(mainWindow) {
       type: 'error',
       message: 'No se pudo descargar la actualización.',
       detail: String(error && error.message ? error.message : error),
+    });
+    return;
+  }
+
+  if (!hasPeHeader(destination)) {
+    fs.rmSync(destination, { force: true });
+    await dialog.showMessageBox({
+      type: 'error',
+      message: 'El archivo descargado no es un ejecutable válido.',
     });
     return;
   }

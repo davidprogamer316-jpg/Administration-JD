@@ -6,6 +6,7 @@ import QRCode from 'qrcode';
 import { Invoice } from '../models/index.js';
 import { CarJob } from '../../carJobs/models/index.js';
 import { env } from '../../../config/env.js';
+import { escapeRegex } from '../../../shared/utils/regex.js';
 
 const COMPANY_NAME = 'WINDOWS TINTING JD CORP';
 const COMPANY_TAGLINE = 'Mobile tinting service — we come to you';
@@ -65,13 +66,13 @@ function cleanDescription(description: string): string {
 export async function list(filters?: { clientName?: string; invoiceNumber?: string; vin?: string }) {
   const query: Record<string, unknown> = {};
   if (filters?.clientName) {
-    query.clientName = { $regex: filters.clientName, $options: 'i' };
+    query.clientName = { $regex: escapeRegex(String(filters.clientName)), $options: 'i' };
   }
   if (filters?.invoiceNumber) {
-    query.invoiceNumber = { $regex: filters.invoiceNumber, $options: 'i' };
+    query.invoiceNumber = { $regex: escapeRegex(String(filters.invoiceNumber)), $options: 'i' };
   }
   if (filters?.vin) {
-    const jobs = await CarJob.find({ vin: { $regex: filters.vin, $options: 'i' } }).select('_id');
+    const jobs = await CarJob.find({ vin: { $regex: escapeRegex(String(filters.vin)), $options: 'i' } }).select('_id');
     const jobIds = jobs.map((job) => job._id);
     if (jobIds.length === 0) {
       return [];

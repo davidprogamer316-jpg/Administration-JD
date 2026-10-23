@@ -1,6 +1,6 @@
 {
   "name": "tinting-jd-desktop",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Tinting-JD desktop app (local backend + frontend, MongoDB Atlas)",
   "main": "main.js",
@@ -10,7 +10,7 @@
     "dist": "node scripts/build-app.mjs && electron-builder --win"
   },
   "devDependencies": {
-    "electron": "^33.2.0",
+    "electron": "^45.0.0",
     "electron-builder": "^25.1.8"
   },
   "build": {

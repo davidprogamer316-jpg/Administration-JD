@@ -4,7 +4,7 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { api } from '@/lib/api';
 import type { Employee } from '@/types';
 import { Pencil, Trash2, UserCheck, UserX, Plus, FileDown, Eye } from 'lucide-react';
-import { downloadFromApi } from '@/lib/download';
+import { downloadFromApi, openPdfFromApi } from '@/lib/download';
 import Modal from '@/components/Modal';
 
 interface EmployeeListData {
@@ -349,10 +349,8 @@ export default function EmployeeList() {
             <button
               onClick={() => {
                 if (!pdfTarget) return;
-                const token = localStorage.getItem('token');
-                window.open(
-                  `${process.env.NEXT_PUBLIC_API_URL}/employees/${pdfTarget._id}/pdf?year=${pdfYear}&month=${pdfMonth}&token=${token}`,
-                  '_blank'
+                openPdfFromApi(
+                  `/employees/${pdfTarget._id}/pdf?year=${pdfYear}&month=${pdfMonth}`
                 );
                 setPdfTarget(null);
               }}

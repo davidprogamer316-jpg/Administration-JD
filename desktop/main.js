@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, shell, session, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, Menu, shell, session, ipcMain, dialog, safeStorage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -40,13 +40,25 @@ function userConfigPath() {
 
 function readConfig() {
   try {
-    return JSON.parse(fs.readFileSync(userConfigPath(), 'utf-8')) || {};
+    const raw = fs.readFileSync(userConfigPath(), 'utf-8');
+    const parsed = JSON.parse(raw) || {};
+    if (parsed && typeof parsed.enc === 'string') {
+      if (!safeStorage.isEncryptionAvailable()) return {};
+      const json = safeStorage.decryptString(Buffer.from(parsed.enc, 'base64'));
+      return JSON.parse(json) || {};
+    }
+    return parsed;
   } catch {
     return {};
   }
 }
 
 function saveConfig(cfg) {
+  if (safeStorage.isEncryptionAvailable()) {
+    const enc = safeStorage.encryptString(JSON.stringify(cfg)).toString('base64');
+    fs.writeFileSync(userConfigPath(), JSON.stringify({ v: 1, enc }), 'utf-8');
+    return;
+  }
   fs.writeFileSync(userConfigPath(), JSON.stringify(cfg, null, 2), 'utf-8');
 }
 
@@ -76,6 +88,7 @@ function startBackend(cfg) {
   const env = {
     ...process.env,
     PORT: String(API_PORT),
+    HOST: API_HOST,
     MONGODB_URI: cfg.mongodbUri,
     JWT_SECRET: cfg.jwtSecret,
     COMPANY_PROFIT_RATE: String(cfg.companyProfitRate != null ? cfg.companyProfitRate : 0.2),
@@ -240,18 +253,27 @@ function createMainWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
+      devTools: !app.isPackaged,
     },
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      if (/\/pdf(\?|$)/.test(url) || url.includes('/api/')) {
-        return { action: 'allow' };
-      }
-      shell.openExternal(url);
-      return { action: 'deny' };
+    if (url === '' || url === 'about:blank' || url.startsWith('blob:') || url.startsWith(WEB_URL)) {
+      return { action: 'allow' };
     }
-    return { action: 'allow' };
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
+
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (url.startsWith(WEB_URL)) return;
+    event.preventDefault();
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      shell.openExternal(url);
+    }
   });
 
   mainWindow.on('closed', () => {
@@ -260,6 +282,17 @@ function createMainWindow() {
 }
 
 function buildMenu() {
+  const viewSubmenu = [
+    { role: 'resetZoom' },
+    { role: 'zoomIn' },
+    { role: 'zoomOut' },
+    { type: 'separator' },
+    { role: 'togglefullscreen' },
+  ];
+  if (!app.isPackaged) {
+    viewSubmenu.push({ role: 'toggleDevTools' });
+  }
+
   const template = [
     {
       label: 'Archivo',
@@ -276,14 +309,7 @@ function buildMenu() {
     },
     {
       label: 'Ver',
-      submenu: [
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
-        { type: 'separator' },
-        { role: 'togglefullscreen' },
-        { role: 'toggleDevTools' },
-      ],
+      submenu: viewSubmenu,
     },
     {
       label: 'Ayuda',
@@ -332,8 +358,9 @@ ipcMain.handle('app:configure', () => {
 });
 
 app.whenReady().then(() => {
-  session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
-    if (permission === 'media') {
+  session.defaultSession.setPermissionRequestHandler((_wc, permission, callback, details) => {
+    const requestingUrl = details && details.requestingUrl ? details.requestingUrl : '';
+    if (permission === 'media' && requestingUrl.startsWith(WEB_URL)) {
       callback(true);
       return;
     }

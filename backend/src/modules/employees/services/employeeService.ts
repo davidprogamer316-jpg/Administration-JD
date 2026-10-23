@@ -34,7 +34,10 @@ export async function create(data: { name: string; percentage: number }) {
     );
   }
 
-  const employee = await Employee.create(data);
+  const employee = await Employee.create({
+    name: data.name,
+    percentage: data.percentage,
+  });
   return employee;
 }
 
