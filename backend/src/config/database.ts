@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { env } from './env.js';
+import { seedDefaultPaperTypes } from '../modules/paperTypes/seed.js';
 
 let retryTimer: NodeJS.Timeout | null = null;
 
@@ -15,6 +16,12 @@ async function connectOnce(attempt: number): Promise<void> {
       connectTimeoutMS: 5000,
     });
     console.log('MongoDB connected successfully');
+    try {
+      await seedDefaultPaperTypes();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(`Paper type seed failed: ${msg}`);
+    }
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error(`MongoDB connection error (attempt ${attempt}): ${msg}`);

@@ -12,6 +12,7 @@ import accountingRoutes from './modules/accounting/routes/accountingRoutes.js';
 import fixedExpenseRoutes from './modules/accounting/routes/fixedExpenseRoutes.js';
 import invoiceRoutes from './modules/invoices/routes/invoiceRoutes.js';
 import quoteRoutes from './modules/quotes/routes/index.js';
+import paperTypeRoutes from './modules/paperTypes/routes/paperTypeRoutes.js';
 import { errorHandler } from './shared/middleware/errorHandler.js';
 
 const app = express();
@@ -64,6 +65,7 @@ app.use('/api/accounting', accountingRoutes);
 app.use('/api/fixed-expenses', fixedExpenseRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/quotes', quoteRoutes);
+app.use('/api/paper-types', paperTypeRoutes);
 
 app.use(errorHandler);
 

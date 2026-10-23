@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import type { CarJob, QuincenaGroup } from '@/types';
 import { Plus, Pencil, XCircle, Search, FileDown, FileText, ChevronDown } from 'lucide-react';
 import { downloadFromApi } from '@/lib/download';
+import { usePaperTypes } from '@/lib/usePaperTypes';
 import VinScanner from '@/components/VinScanner';
 import Modal from '@/components/Modal';
 import DateInput from '@/components/DateInput';
@@ -21,17 +22,6 @@ function formatDate(dateStr: string) {
 function formatMoney(n: number) {
   return `$${n.toLocaleString('es-CO', { minimumFractionDigits: 2 })}`;
 }
-
-const PAPER_OPTIONS = [
-  { value: 'premium', label: 'Premium Film' },
-  { value: 'ceramic', label: 'Ceramic Film' },
-  { value: 'ultra_ceramic', label: 'Ultra Ceramic Film' },
-  { value: 'ceramica_d', label: 'Cerámica D · 2 años' },
-  { value: 'architectural_black', label: 'Architectural Black Film' },
-  { value: 'architectural_silver', label: 'Architectural Silver Film' },
-  { value: 'architectural_black_silver', label: 'Architectural Black-Silver Film' },
-  { value: 'none', label: 'DOES NOT APPLY' },
-];
 
 const PAYMENT_METHODS = [
   { value: 'efectivo', label: 'Efectivo' },
@@ -65,6 +55,21 @@ export default function CarJobList() {
   const [formPaymentMethod, setFormPaymentMethod] = useState('efectivo');
   const [formPaperTypes, setFormPaperTypes] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+
+  const { paperTypes } = usePaperTypes();
+
+  const paperOptions = useMemo(
+    () => [
+      ...paperTypes
+        .filter((p) => p.active || formPaperTypes.includes(p.code))
+        .map((p) => ({
+          value: p.code,
+          label: p.active ? p.label : `${p.label} (inactivo)`,
+        })),
+      { value: 'none', label: 'DOES NOT APPLY' },
+    ],
+    [paperTypes, formPaperTypes]
+  );
 
   function togglePaper(val: string) {
     if (val === 'none') {
@@ -400,7 +405,7 @@ export default function CarJobList() {
             <div>
               <label className="block text-text-muted text-sm mb-2">Film used</label>
               <div className="space-y-1.5">
-                {PAPER_OPTIONS.map((opt) => {
+                {paperOptions.map((opt) => {
                   const checked = formPaperTypes.includes(opt.value);
                   return (
                     <label
@@ -630,7 +635,7 @@ export default function CarJobList() {
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {detailJob.paperTypes.map((pt) => {
-                    const opt = PAPER_OPTIONS.find((o) => o.value === pt);
+                    const opt = paperTypes.find((p) => p.code === pt);
                     return (
                       <span
                         key={pt}

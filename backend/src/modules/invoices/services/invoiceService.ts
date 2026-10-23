@@ -7,6 +7,7 @@ import { Invoice } from '../models/index.js';
 import { CarJob } from '../../carJobs/models/index.js';
 import { env } from '../../../config/env.js';
 import { escapeRegex } from '../../../shared/utils/regex.js';
+import { getPaperInfoMap } from '../../paperTypes/services/paperTypeService.js';
 
 const COMPANY_NAME = 'WINDOWS TINTING JD CORP';
 const COMPANY_TAGLINE = 'Mobile tinting service — we come to you';
@@ -15,37 +16,6 @@ const COMPANY_URL = 'https://tinting-film.com';
 
 const LOGO_PATH = path.join(env.assetsDir, 'logo.PNG');
 const QR_SIZE = 72;
-
-const PAPER_INFO: Record<string, { label: string; specs: string }> = {
-  premium: {
-    label: 'Premium Film',
-    specs: 'Solar rejection: 40%, UV protection: 90%, Warranty: 6 months',
-  },
-  ceramic: {
-    label: 'Ceramic Film',
-    specs: 'Solar rejection: 70%, UV protection: 100%, Warranty: 5 years',
-  },
-  ultra_ceramic: {
-    label: 'Ultra Ceramic Film',
-    specs: 'Solar rejection: 98%, UV protection: 100%, Warranty: 10 years',
-  },
-  ceramica_d: {
-    label: 'Ceramic Film',
-    specs: 'Solar rejection: 70%, UV protection: 100%, Warranty: 2 years',
-  },
-  architectural_black: {
-    label: 'Architectural Black Film',
-    specs: 'Solar rejection: 80%, UV protection: 99%, Warranty: 4 years',
-  },
-  architectural_silver: {
-    label: 'Architectural Silver Film',
-    specs: 'Solar rejection: 80%, UV protection: 99%, Warranty: 4 years',
-  },
-  architectural_black_silver: {
-    label: 'Architectural Black-Silver Film',
-    specs: 'Solar rejection: 97%, UV protection: 99%, Warranty: 6 years',
-  },
-};
 
 function formatMoney(n: number): string {
   return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
@@ -143,6 +113,12 @@ export async function generatePdf(id: string): Promise<Buffer> {
     carJobIds.map((id) => vinMap[id]).filter((v): v is string => !!v)
   )];
 
+  // ── Resolve paper type labels/specs (including deactivated ones) ──
+  const paperCodes = [
+    ...new Set(invoice.items.flatMap((item) => item.paperTypes || [])),
+  ];
+  const paperInfo = await getPaperInfoMap(paperCodes);
+
   // ── Layout constants for 80 mm thermal paper ──
   // At 90% scale the user confirmed 204pt (72mm) fits in the printable area.
   // We use 204pt directly so the print dialog can use "Actual size" at 100%.
@@ -211,7 +187,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
     }
     if (item.paperTypes && item.paperTypes.length > 0) {
       for (const pt of item.paperTypes) {
-        const info = PAPER_INFO[pt];
+        const info = paperInfo[pt];
         if (info) {
           paperH += textH(`${info.label} — ${info.specs}`, CONTENT_W, 10) + 1;
         }
@@ -354,7 +330,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
       if (item.paperTypes && item.paperTypes.length > 0) {
         doc.fontSize(10).font(FONT).fillColor('#000');
         for (const pt of item.paperTypes) {
-          const info = PAPER_INFO[pt];
+          const info = paperInfo[pt];
           if (!info) continue;
           const text = `${info.label} — ${info.specs}`;
           const h = doc.heightOfString(text, { width: CONTENT_W });

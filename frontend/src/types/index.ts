@@ -108,6 +108,15 @@ export interface QuoteItem {
   sqFt: number;
 }
 
+export interface PaperType {
+  _id: string;
+  code: string;
+  label: string;
+  specs: string;
+  active: boolean;
+  sortOrder: number;
+}
+
 export interface Quote {
   _id: string;
   quoteNumber: string;

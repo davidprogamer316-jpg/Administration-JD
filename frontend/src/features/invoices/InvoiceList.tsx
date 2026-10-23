@@ -3,6 +3,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { api } from '@/lib/api';
 import { downloadFromApi, openPdfFromApi } from '@/lib/download';
+import { usePaperTypes } from '@/lib/usePaperTypes';
 import type { CarJob, Invoice } from '@/types';
 import { Plus, FileDown, Trash2, Eye, Search } from 'lucide-react';
 import Modal from '@/components/Modal';
@@ -26,6 +27,7 @@ function cleanDescription(description: string) {
 }
 
 export default function InvoiceList() {
+  const { paperTypes } = usePaperTypes();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -269,18 +271,9 @@ export default function InvoiceList() {
                           )}
                           {job.paperTypes && job.paperTypes.length > 0 && (
                             <p className="text-text-muted text-xs mt-0.5">
-                              {job.paperTypes.map((pt) => {
-                                const labels: Record<string, string> = {
-                                  premium: 'Premium',
-                                  ceramic: 'Ceramic',
-                                  ceramica_d: 'Ceramic',
-                                  ultra_ceramic: 'Ultra Ceramic',
-                                  architectural_black: 'Architectural Black',
-                                  architectural_silver: 'Architectural Silver',
-                                  architectural_black_silver: 'Architectural Black-Silver',
-                                };
-                                return labels[pt] || pt;
-                              }).join(', ')}
+                              {job.paperTypes.map((pt) =>
+                                paperTypes.find((p) => p.code === pt)?.label || pt
+                              ).join(', ')}
                             </p>
                           )}
                         </div>

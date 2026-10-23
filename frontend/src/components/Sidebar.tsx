@@ -10,6 +10,7 @@ import {
   FileText,
   Settings,
   Ruler,
+  Layers,
   LogOut,
   X,
   Menu,
@@ -24,6 +25,7 @@ const navItems = [
   { href: '/car-jobs', label: 'Trabajos', icon: Car },
   { href: '/invoices', label: 'Facturación', icon: FileText },
   { href: '/quotes', label: 'Cotizaciones', icon: Ruler },
+  { href: '/paper-types', label: 'Papeles', icon: Layers },
   { href: '/settings', label: 'Configuración', icon: Settings },
 ];
 
