@@ -3,6 +3,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { api } from '@/lib/api';
 import { downloadFromApi, openPdfFromApi } from '@/lib/download';
+import { buildJobInvoiceDescription } from '@/lib/jobInvoice';
 import { usePaperTypes } from '@/lib/usePaperTypes';
 import type { CarJob, Invoice } from '@/types';
 import { Plus, FileDown, Trash2, Eye, Search } from 'lucide-react';
@@ -99,7 +100,7 @@ export default function InvoiceList() {
       .filter((j): j is CarJob => !!j)
       .flatMap((j) => {
         const mainItem = {
-          description: j.description,
+          description: buildJobInvoiceDescription(j),
           amount: j.payment,
           carJobId: j._id,
           paperTypes: j.paperTypes || [],

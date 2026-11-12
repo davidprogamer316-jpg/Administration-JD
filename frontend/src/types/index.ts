@@ -50,12 +50,25 @@ export interface QuincenaGroup {
   totalPayment: number;
 }
 
+export interface CarJobItem {
+  ancho: number;
+  alto: number;
+  unidades: number;
+  nota?: string;
+  sqFt: number;
+}
+
 export interface CarJob {
   _id: string;
   date: string;
-  vin: string;
+  jobType?: 'vehicle' | 'property';
+  vin?: string;
+  address?: string;
   description: string;
   payment: number;
+  items?: CarJobItem[];
+  totalSqFt?: number;
+  pricePerSqFt?: number;
   closed: boolean;
   active: boolean;
   paperTypes: string[];

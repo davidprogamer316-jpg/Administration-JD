@@ -279,7 +279,15 @@ export async function exportCarJobsExcel(filters?: {
     },
   };
 
-  const headers = ['Fecha', 'VIN', 'Descripción', 'Pago', 'Estado'];
+  const headers = [
+    'Fecha',
+    'Tipo',
+    'VIN / Dirección',
+    'Descripción',
+    'Área (pies²)',
+    'Pago',
+    'Estado',
+  ];
   const headerRow = ws.addRow(headers);
   headerRow.eachCell((cell) => {
     cell.style = headerStyle;
@@ -288,20 +296,26 @@ export async function exportCarJobsExcel(filters?: {
   let totalPayment = 0;
 
   for (const job of jobs) {
+    const isProperty = job.jobType === 'property';
     const row = ws.addRow([
       job.date.toLocaleDateString('es-ES'),
-      job.vin,
+      isProperty ? 'Casa' : 'Vehículo',
+      isProperty ? job.address || '—' : job.vin,
       job.description,
+      isProperty ? job.totalSqFt : '',
       job.payment,
       job.closed ? 'Cerrado' : 'Abierto',
     ]);
 
     totalPayment += job.payment;
 
-    row.getCell(4).numFmt = '$#,##0.00';
-    row.getCell(4).alignment = { horizontal: 'right' };
+    row.getCell(5).numFmt = '0.00';
+    row.getCell(5).alignment = { horizontal: 'right' };
+    row.getCell(6).numFmt = '$#,##0.00';
+    row.getCell(6).alignment = { horizontal: 'right' };
     row.getCell(1).alignment = { horizontal: 'center' };
-    row.getCell(5).alignment = { horizontal: 'center' };
+    row.getCell(2).alignment = { horizontal: 'center' };
+    row.getCell(7).alignment = { horizontal: 'center' };
 
     if (jobs.indexOf(job) % 2 === 1) {
       row.eachCell((cell) => {
@@ -314,13 +328,13 @@ export async function exportCarJobsExcel(filters?: {
     }
   }
 
-  const totalRow = ws.addRow(['TOTALES', '', '', totalPayment, '']);
+  const totalRow = ws.addRow(['TOTALES', '', '', '', '', totalPayment, '']);
   totalRow.eachCell((cell, col) => {
     cell.font = { bold: true, size: 10 };
     cell.border = {
       top: { style: 'medium', color: { argb: 'D4A84B' } },
     };
-    if (col === 4) {
+    if (col === 6) {
       cell.numFmt = '$#,##0.00';
       cell.alignment = { horizontal: 'right' };
     }
@@ -328,8 +342,10 @@ export async function exportCarJobsExcel(filters?: {
 
   ws.columns = [
     { width: 14 },
-    { width: 20 },
+    { width: 12 },
+    { width: 22 },
     { width: 40 },
+    { width: 14 },
     { width: 16 },
     { width: 12 },
   ];

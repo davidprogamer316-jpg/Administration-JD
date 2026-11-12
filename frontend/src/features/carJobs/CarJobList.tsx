@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import type { CarJob, QuincenaGroup } from '@/types';
 import { Plus, Pencil, XCircle, Search, FileDown, FileText, ChevronDown } from 'lucide-react';
 import { downloadFromApi } from '@/lib/download';
+import { buildJobInvoiceDescription } from '@/lib/jobInvoice';
 import { usePaperTypes } from '@/lib/usePaperTypes';
 import VinScanner from '@/components/VinScanner';
 import Modal from '@/components/Modal';
@@ -21,6 +22,25 @@ function formatDate(dateStr: string) {
 
 function formatMoney(n: number) {
   return `$${n.toLocaleString('es-CO', { minimumFractionDigits: 2 })}`;
+}
+
+function round2(n: number) {
+  return Math.round(n * 100) / 100;
+}
+
+interface DraftItem {
+  ancho: string;
+  alto: string;
+  unidades: string;
+  nota: string;
+}
+
+function sqFtOf(item: DraftItem) {
+  const ancho = parseFloat(item.ancho);
+  const alto = parseFloat(item.alto);
+  const unidades = parseFloat(item.unidades);
+  if (!ancho || !alto || !unidades) return 0;
+  return round2((ancho * alto * unidades) / 144);
 }
 
 const PAYMENT_METHODS = [
@@ -49,7 +69,13 @@ export default function CarJobList() {
   const [invoiceMsg, setInvoiceMsg] = useState('');
 
   const [formDate, setFormDate] = useState('');
+  const [formJobType, setFormJobType] = useState<'vehicle' | 'property'>('vehicle');
   const [formVin, setFormVin] = useState('');
+  const [formAddress, setFormAddress] = useState('');
+  const [formItems, setFormItems] = useState<DraftItem[]>([
+    { ancho: '', alto: '', unidades: '1', nota: '' },
+  ]);
+  const [formPricePerSqFt, setFormPricePerSqFt] = useState('');
   const [formDesc, setFormDesc] = useState('');
   const [formPayment, setFormPayment] = useState('');
   const [formPaymentMethod, setFormPaymentMethod] = useState('efectivo');
@@ -57,6 +83,33 @@ export default function CarJobList() {
   const [submitting, setSubmitting] = useState(false);
 
   const { paperTypes } = usePaperTypes();
+
+  const propertyTotalSqFt = round2(
+    formItems.reduce((sum, item) => sum + sqFtOf(item), 0)
+  );
+  const propertyPrice = parseFloat(formPricePerSqFt) || 0;
+  const propertyTotal = round2(propertyTotalSqFt * propertyPrice);
+  const effectivePayment =
+    formJobType === 'property' ? propertyTotal : parseFloat(formPayment) || 0;
+
+  function updateFormItem(index: number, field: keyof DraftItem, value: string) {
+    setFormItems((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
+    );
+  }
+
+  function addFormItem() {
+    setFormItems((prev) => [
+      ...prev,
+      { ancho: '', alto: '', unidades: '1', nota: '' },
+    ]);
+  }
+
+  function removeFormItem(index: number) {
+    setFormItems((prev) =>
+      prev.length === 1 ? prev : prev.filter((_, i) => i !== index)
+    );
+  }
 
   const paperOptions = useMemo(
     () => [
@@ -154,7 +207,11 @@ export default function CarJobList() {
 
   function resetForm() {
     setFormDate('');
+    setFormJobType('vehicle');
     setFormVin('');
+    setFormAddress('');
+    setFormItems([{ ancho: '', alto: '', unidades: '1', nota: '' }]);
+    setFormPricePerSqFt('');
     setFormDesc('');
     setFormPayment('');
     setFormPaymentMethod('efectivo');
@@ -168,7 +225,20 @@ export default function CarJobList() {
   function startEdit(job: CarJob) {
     setEditing(job);
     setFormDate(job.date.split('T')[0]);
-    setFormVin(job.vin);
+    setFormJobType(job.jobType === 'property' ? 'property' : 'vehicle');
+    setFormVin(job.vin || '');
+    setFormAddress(job.address || '');
+    setFormItems(
+      job.items && job.items.length > 0
+        ? job.items.map((it) => ({
+            ancho: String(it.ancho),
+            alto: String(it.alto),
+            unidades: String(it.unidades),
+            nota: it.nota || '',
+          }))
+        : [{ ancho: '', alto: '', unidades: '1', nota: '' }]
+    );
+    setFormPricePerSqFt(job.pricePerSqFt ? String(job.pricePerSqFt) : '');
     setFormDesc(job.description);
     setFormPayment(job.payment.toString());
     setFormPaymentMethod(job.paymentMethod || 'efectivo');
@@ -179,17 +249,61 @@ export default function CarJobList() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
+
+    const isProperty = formJobType === 'property';
+
+    if (isProperty) {
+      const validItems = formItems.filter(
+        (it) => parseFloat(it.ancho) > 0 && parseFloat(it.alto) > 0
+      );
+      if (validItems.length === 0) {
+        setError('Agrega al menos una medida (ancho y alto)');
+        return;
+      }
+      if (!(parseFloat(formPricePerSqFt) > 0)) {
+        setError('Indica el precio por pie cuadrado');
+        return;
+      }
+    } else {
+      if (!formVin.trim()) {
+        setError('El VIN es obligatorio');
+        return;
+      }
+      if (isNaN(parseFloat(formPayment))) {
+        setError('Indica el pago');
+        return;
+      }
+    }
+
     setSubmitting(true);
 
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         date: formDate,
-        vin: formVin,
+        jobType: formJobType,
         description: formDesc,
-        payment: parseFloat(formPayment),
-        paymentMethod: formPaymentMethod === 'efectivo' ? undefined : formPaymentMethod,
+        paymentMethod:
+          formPaymentMethod === 'efectivo' ? undefined : formPaymentMethod,
         paperTypes: formPaperTypes.filter((t) => t !== 'none'),
       };
+
+      if (isProperty) {
+        payload.address = formAddress;
+        payload.pricePerSqFt = parseFloat(formPricePerSqFt);
+        payload.items = formItems
+          .filter(
+            (it) => parseFloat(it.ancho) > 0 && parseFloat(it.alto) > 0
+          )
+          .map((it) => ({
+            ancho: parseFloat(it.ancho),
+            alto: parseFloat(it.alto),
+            unidades: parseFloat(it.unidades) || 1,
+            nota: it.nota,
+          }));
+      } else {
+        payload.vin = formVin;
+        payload.payment = parseFloat(formPayment);
+      }
 
       if (editing) {
         await api.patch(`/car-jobs/${editing._id}`, payload);
@@ -220,7 +334,7 @@ export default function CarJobList() {
     if (!detailJob) return;
     const items: Array<{ description: string; amount: number; carJobId?: string; paperTypes?: string[]; date?: string }> = [
       {
-        description: detailJob.description,
+        description: buildJobInvoiceDescription(detailJob),
         amount: detailJob.payment,
         carJobId: detailJob._id,
         paperTypes: detailJob.paperTypes || [],
@@ -342,21 +456,184 @@ export default function CarJobList() {
               />
             </div>
             <div>
-              <label className="block text-text-muted text-sm mb-1">VIN</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={formVin}
-                  onChange={(e) => setFormVin(e.target.value.toUpperCase())}
-                  placeholder="Código VIN del vehículo"
-                  required
-                  className="flex-1 rounded-lg border border-border bg-bg-page px-3.5 py-2.5 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-colors"
-                />
-                <VinScanner
-                  onScan={(vin) => setFormVin(vin.toUpperCase())}
-                />
+              <label className="block text-text-muted text-sm mb-1">
+                Tipo de trabajo
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFormJobType('vehicle')}
+                  className={`rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
+                    formJobType === 'vehicle'
+                      ? 'border-accent bg-accent/10 text-accent'
+                      : 'border-border text-text-muted hover:bg-bg-page'
+                  }`}
+                >
+                  Vehículo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormJobType('property')}
+                  className={`rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
+                    formJobType === 'property'
+                      ? 'border-accent bg-accent/10 text-accent'
+                      : 'border-border text-text-muted hover:bg-bg-page'
+                  }`}
+                >
+                  Casa (por medida)
+                </button>
               </div>
             </div>
+
+            {formJobType === 'vehicle' ? (
+              <div>
+                <label className="block text-text-muted text-sm mb-1">VIN</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={formVin}
+                    onChange={(e) => setFormVin(e.target.value.toUpperCase())}
+                    placeholder="Código VIN del vehículo"
+                    className="flex-1 rounded-lg border border-border bg-bg-page px-3.5 py-2.5 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-colors"
+                  />
+                  <VinScanner
+                    onScan={(vin) => setFormVin(vin.toUpperCase())}
+                  />
+                </div>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-text-muted text-sm mb-1">
+                    Dirección / Referencia
+                  </label>
+                  <input
+                    type="text"
+                    value={formAddress}
+                    onChange={(e) => setFormAddress(e.target.value)}
+                    placeholder="Ej: Casa en 123 Main St"
+                    className="w-full rounded-lg border border-border bg-bg-page px-3.5 py-2.5 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-text-muted text-sm mb-2">
+                    Medidas (pulgadas)
+                  </label>
+                  <div className="space-y-2">
+                    {formItems.map((item, index) => (
+                      <div
+                        key={index}
+                        className="grid grid-cols-[1fr_1fr_72px_auto] items-center gap-2"
+                      >
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={item.ancho}
+                          onChange={(e) =>
+                            updateFormItem(index, 'ancho', e.target.value)
+                          }
+                          placeholder="Ancho"
+                          className="w-full rounded-lg border border-border bg-bg-page px-2.5 py-2 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40"
+                        />
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={item.alto}
+                          onChange={(e) =>
+                            updateFormItem(index, 'alto', e.target.value)
+                          }
+                          placeholder="Alto"
+                          className="w-full rounded-lg border border-border bg-bg-page px-2.5 py-2 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40"
+                        />
+                        <input
+                          type="number"
+                          step="1"
+                          min="1"
+                          value={item.unidades}
+                          onChange={(e) =>
+                            updateFormItem(index, 'unidades', e.target.value)
+                          }
+                          placeholder="Unid."
+                          className="w-full rounded-lg border border-border bg-bg-page px-2.5 py-2 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40"
+                        />
+                        <div className="flex items-center justify-end gap-1 text-xs text-text-muted tabular-nums">
+                          <span>{sqFtOf(item).toFixed(2)}</span>
+                          {formItems.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeFormItem(index)}
+                              className="p-0.5 text-text-muted hover:text-danger transition-colors"
+                              title="Quitar medida"
+                            >
+                              <XCircle size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-2 space-y-1.5">
+                    {formItems.map((item, index) => (
+                      <input
+                        key={`nota-${index}`}
+                        type="text"
+                        value={item.nota}
+                        onChange={(e) =>
+                          updateFormItem(index, 'nota', e.target.value)
+                        }
+                        placeholder={`Nota opcional medida ${index + 1}`}
+                        className="w-full rounded-lg border border-border bg-bg-page px-3.5 py-2 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 transition-colors"
+                      />
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={addFormItem}
+                    className="mt-3 inline-flex items-center gap-1.5 text-sm text-accent font-medium hover:text-accent/80 transition-colors"
+                  >
+                    <Plus size={16} />
+                    Agregar medida
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-text-muted text-sm mb-1">
+                    Precio por pie cuadrado (USD)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formPricePerSqFt}
+                    onChange={(e) => setFormPricePerSqFt(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full rounded-lg border border-border bg-bg-page px-3.5 py-2.5 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-colors"
+                  />
+                </div>
+
+                <div className="rounded-lg border border-border bg-bg-page p-4 space-y-1.5 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-text-muted">Total pies²</span>
+                    <span className="text-text-body font-medium tabular-nums">
+                      {propertyTotalSqFt.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-border">
+                    <span className="text-text-body font-semibold">
+                      Total calculado
+                    </span>
+                    <span className="text-text-body font-semibold text-base tabular-nums">
+                      {propertyTotal > 0 ? formatMoney(propertyTotal) : '—'}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
             <div>
               <label className="block text-text-muted text-sm mb-1">
                 Descripción
@@ -370,18 +647,20 @@ export default function CarJobList() {
                 className="w-full rounded-lg border border-border bg-bg-page px-3.5 py-2.5 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-colors resize-none"
               />
             </div>
-            <div>
-              <label className="block text-text-muted text-sm mb-1">Pago</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formPayment}
-                onChange={(e) => setFormPayment(e.target.value)}
-                required
-                className="w-full rounded-lg border border-border bg-bg-page px-3.5 py-2.5 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-colors"
-              />
-            </div>
+            {formJobType === 'vehicle' && (
+              <div>
+                <label className="block text-text-muted text-sm mb-1">Pago</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formPayment}
+                  onChange={(e) => setFormPayment(e.target.value)}
+                  required
+                  className="w-full rounded-lg border border-border bg-bg-page px-3.5 py-2.5 text-sm text-text-body outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-colors"
+                />
+              </div>
+            )}
             <div>
               <label className="block text-text-muted text-sm mb-1">Método de pago</label>
               <select
@@ -393,11 +672,11 @@ export default function CarJobList() {
                   <option key={m.value} value={m.value}>{m.label}</option>
                 ))}
               </select>
-              {formPaymentMethod === 'credito_debito' && formPayment && (
+              {formPaymentMethod === 'credito_debito' && effectivePayment > 0 && (
                 <p className="text-xs text-text-muted mt-1.5">
                   Recargo por tarjeta (3.6%):{' '}
                   <span className="font-medium text-text-body">
-                    {formatMoney(Math.round(parseFloat(formPayment) * CARD_SURCHARGE_RATE * 100) / 100)}
+                    {formatMoney(Math.round(effectivePayment * CARD_SURCHARGE_RATE * 100) / 100)}
                   </span>
                 </p>
               )}
@@ -513,7 +792,7 @@ export default function CarJobList() {
                                     <thead>
                                       <tr className="border-b border-border">
                                         <th className="text-left px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">Fecha</th>
-                                        <th className="text-left px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">VIN</th>
+                                        <th className="text-left px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">VIN / Dirección</th>
                                         <th className="text-left px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">Descripción</th>
                                         <th className="text-right px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">Pago</th>
                                         <th className="text-center px-4 py-3 text-text-muted text-xs font-medium uppercase tracking-wider">Estado</th>
@@ -528,7 +807,30 @@ export default function CarJobList() {
                                           className={`border-b border-border even:bg-bg-page cursor-pointer hover:bg-accent/5 transition-colors`}
                                         >
                                           <td className="px-4 py-3 text-sm text-text-body">{formatDate(job.date)}</td>
-                                          <td className="px-4 py-3 text-sm font-mono text-text-body">{job.vin}</td>
+                                          <td className="px-4 py-3 text-sm text-text-body">
+                                            <span
+                                              className={`mr-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                                job.jobType === 'property'
+                                                  ? 'bg-amber-50 text-amber-700'
+                                                  : 'bg-slate-100 text-slate-600'
+                                              }`}
+                                            >
+                                              {job.jobType === 'property'
+                                                ? 'Casa'
+                                                : 'Vehículo'}
+                                            </span>
+                                            <span
+                                              className={
+                                                job.jobType === 'property'
+                                                  ? ''
+                                                  : 'font-mono'
+                                              }
+                                            >
+                                              {job.jobType === 'property'
+                                                ? job.address || '—'
+                                                : job.vin}
+                                            </span>
+                                          </td>
                                           <td className="px-4 py-3 text-sm text-text-body max-w-xs truncate">{job.description}</td>
                                           <td className="px-4 py-3 text-sm text-text-body text-right font-medium">{formatMoney(job.payment)}</td>
                                           <td className="px-4 py-3 text-center">
@@ -594,12 +896,69 @@ export default function CarJobList() {
             </div>
             <div>
               <p className="text-text-muted text-xs uppercase tracking-wider mb-0.5">
-                VIN
+                Tipo
               </p>
-              <p className="text-text-body font-mono font-medium">
-                {detailJob.vin}
+              <p className="text-text-body font-medium">
+                {detailJob.jobType === 'property'
+                  ? 'Casa (por medida)'
+                  : 'Vehículo'}
               </p>
             </div>
+            {detailJob.jobType === 'property' ? (
+              <>
+                <div>
+                  <p className="text-text-muted text-xs uppercase tracking-wider mb-0.5">
+                    Dirección / Referencia
+                  </p>
+                  <p className="text-text-body font-medium">
+                    {detailJob.address || '—'}
+                  </p>
+                </div>
+                {(detailJob.items?.length ?? 0) > 0 && (
+                  <div>
+                    <p className="text-text-muted text-xs uppercase tracking-wider mb-1">
+                      Medidas
+                    </p>
+                    <div className="space-y-1">
+                      {detailJob.items?.map((item, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between gap-3 text-sm"
+                        >
+                          <span className="text-text-body">
+                            {item.ancho} x {item.alto} pulg. × {item.unidades}
+                          </span>
+                          <span className="text-text-muted tabular-nums">
+                            {item.sqFt.toFixed(2)} pies²
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-sm">
+                      <span className="text-text-muted">Total pies²</span>
+                      <span className="text-text-body font-medium tabular-nums">
+                        {(detailJob.totalSqFt ?? 0).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-text-muted">Precio por pie²</span>
+                      <span className="text-text-body font-medium tabular-nums">
+                        {formatMoney(detailJob.pricePerSqFt ?? 0)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div>
+                <p className="text-text-muted text-xs uppercase tracking-wider mb-0.5">
+                  VIN
+                </p>
+                <p className="text-text-body font-mono font-medium">
+                  {detailJob.vin}
+                </p>
+              </div>
+            )}
             <div>
               <p className="text-text-muted text-xs uppercase tracking-wider mb-0.5">
                 Descripción

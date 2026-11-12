@@ -106,7 +106,7 @@ export async function generatePdf(id: string): Promise<Buffer> {
   if (carJobIds.length > 0) {
     const jobs = await CarJob.find({ _id: { $in: carJobIds } });
     for (const job of jobs) {
-      vinMap[String(job._id)] = job.vin;
+      vinMap[String(job._id)] = job.vin || '';
     }
   }
   const vins = [...new Set(
